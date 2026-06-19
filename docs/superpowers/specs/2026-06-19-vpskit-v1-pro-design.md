@@ -77,6 +77,10 @@ The installer runs as root and accepts configuration only through environment va
 
 安装器必须以 root 身份运行，只通过环境变量接收配置，禁止交互式提问。
 
+Before preflight, the installer acquires an exclusive, non-blocking lock represented by `/var/lib/vpskit.lock`. The path is a persistent lock file, while the kernel lock is held on its file descriptor with `flock` for the full transaction. A concurrent run exits before mutation; a stale file does not block installation because ownership is determined by the kernel lock rather than file existence alone.
+
+预检前，安装器必须通过 `/var/lib/vpskit.lock` 获取非阻塞独占锁，并在整个事务期间持有文件描述符上的 `flock`。并发安装必须在修改系统前退出；单纯遗留的锁文件不会造成永久锁死，因为锁归属由内核文件锁判断。
+
 Required variables / 必填变量：
 
 - `VPSKIT_TROJAN_DOMAIN`: customer-owned hostname whose A/AAAA record resolves to the target VPS.
@@ -257,6 +261,18 @@ Every mutation records a compensating action. On failure, rollback runs in rever
 
 Certificate issuance and central API writes are external side effects. Rollback revokes or deactivates a newly created subscription when possible and records any cleanup failure for operator action.
 
+## 11.1 Implementation Phases / 实施阶段
+
+Implementation is gated into independently runnable and testable releases:
+
+1. **Phase 1 — Core installer:** preflight, installation lock, transaction journal, VPSGuard, Xray Reality, and a local VLESS subscription artifact.
+2. **Phase 2 — Multi-protocol:** Hysteria2, Trojan, BBR, MTU, and DNS optimization.
+3. **Phase 3 — Control plane:** signed FastAPI ingestion, PostgreSQL, Redis, and subscription lifecycle endpoints.
+4. **Phase 4 — Subscription formats:** validated metadata schema and pure renderers for all required clients.
+5. **Phase 5 — Hardening and reliability:** full health orchestration, reboot verification, schema evolution, operational recovery, and end-to-end production qualification.
+
+每个阶段必须在进入下一阶段前独立通过测试和评审。Phase 1 只能输出 `VPSKit PHASE 1 COMPLETE`，不得输出全局 `VPSKit INSTALL COMPLETE`。全局完成信息只允许在 Phase 5 端到端验证确认 TCP 443、UDP 443、TCP 8443、控制面上传和公网订阅全部正常后输出。
+
 ## 12. Verification / 验证
 
 Installation succeeds only when all checks pass:
@@ -330,4 +346,3 @@ Status / 状态:
 6. All five subscription representations pass automated parsing tests and expose all three protocols where the client supports them.
 7. Ubuntu and Debian end-to-end test VMs retain SSH connectivity and pass service health checks after installation and reboot.
 8. The specified bilingual completion output appears only after the public subscription URL is verified active.
-
