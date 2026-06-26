@@ -65,6 +65,9 @@ Safety and recovery:
 - `install hardening` changes SSH, UFW, Fail2ban, sudoers, and the managed Linux user.
 - `install vless-reality` writes Xray config, starts `xray.service`, and saves subscription output under `/var/lib/vpskit/`.
 - Default managed Linux user is `alex`.
+- File writes are transaction-backed where practical.
+- Package installation, Linux user creation, sudo group changes, UFW state changes, and service restarts are not fully reversible automatically.
+- The installer refuses to overwrite an existing Xray config unless `VPSKIT_XRAY_FORCE_OVERWRITE=1` is set.
 - If a repair produces unexpected output, keep the original input file and re-run the repair helper on a copy.
 
 Uninstall:
@@ -147,6 +150,9 @@ Shadowrocket 使用：
 - `install hardening` 会修改 SSH、UFW、Fail2ban、sudoers 和受管理的 Linux 用户。
 - `install vless-reality` 会写入 Xray 配置、启动 `xray.service`，并把订阅输出保存到 `/var/lib/vpskit/`。
 - 默认受管理的 Linux 用户是 `alex`。
+- 文件写入会尽量使用事务回滚。
+- 软件包安装、Linux 用户创建、sudo 组变更、UFW 状态变更和服务重启无法完全自动回滚。
+- 如果已有 Xray 配置，除非设置 `VPSKIT_XRAY_FORCE_OVERWRITE=1`，安装器会拒绝覆盖。
 - 如果修复后的输出不符合预期，请保留原始输入文件，并在副本上重新运行修复 helper。
 
 卸载：

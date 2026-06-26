@@ -15,29 +15,253 @@ vpskit_validate_managed_user() {
 }
 
 vpskit_hardening_detect_ssh_port() {
-  local configured_port
+  local detected_port
 
   if [ -n "${VPSKIT_SSH_PORT:-}" ]; then
+    vpskit_validate_tcp_port "${VPSKIT_SSH_PORT}" || return 1
     printf '%s\n' "${VPSKIT_SSH_PORT}"
     return 0
   fi
 
-  configured_port="$(vpskit_sshd_effective_value Port 2>/dev/null || true)"
-  printf '%s\n' "${configured_port:-22}"
-}
-
-vpskit_require_root_ssh_key_safety() {
-  local authorized_keys
-
-  if vpskit_is_dry_run || [ -n "${VPSKIT_TEST_ROOT_DIR:-}" ]; then
+  detected_port="$(vpskit_detect_ssh_port_from_sshd_t)"
+  if [ -n "${detected_port}" ]; then
+    printf '%s\n' "${detected_port}"
     return 0
   fi
 
-  authorized_keys="/root/.ssh/authorized_keys"
+  detected_port="$(vpskit_detect_ssh_port_from_config_files)"
+  if [ -n "${detected_port}" ]; then
+    printf '%s\n' "${detected_port}"
+    return 0
+  fi
+
+  detected_port="$(vpskit_detect_ssh_port_from_listener)"
+  if [ -n "${detected_port}" ]; then
+    printf '%s\n' "${detected_port}"
+    return 0
+  fi
+
+  vpskit_die "unable to confidently detect SSH port; set VPSKIT_SSH_PORT explicitly"
+}
+
+vpskit_validate_tcp_port() {
+  local port="$1"
+
+  case "${port}" in
+    '' | *[!0-9]*)
+      vpskit_die "invalid TCP port: ${port}"
+      return 1
+      ;;
+  esac
+
+  if [ "${port}" -lt 1 ] || [ "${port}" -gt 65535 ]; then
+    vpskit_die "invalid TCP port: ${port}"
+    return 1
+  fi
+}
+
+vpskit_detect_ssh_port_from_sshd_t() {
+  local output=""
+  local port
+
+  if [ -n "${VPSKIT_TEST_SSHD_T_OUTPUT+x}" ]; then
+    output="${VPSKIT_TEST_SSHD_T_OUTPUT}"
+  elif command -v sshd >/dev/null 2>&1; then
+    output="$(sshd -T 2>/dev/null || true)"
+  fi
+
+  port="$(printf '%s\n' "${output}" | awk 'tolower($1) == "port" {print $2; exit}')"
+  if [ -n "${port}" ]; then
+    vpskit_validate_tcp_port "${port}" || return 1
+    printf '%s\n' "${port}"
+  fi
+}
+
+vpskit_detect_ssh_port_from_config_files() {
+  local config_path
+  local config_dir
+  local port
+
+  config_path="$(vpskit_sshd_config_path)"
+  config_dir="${VPSKIT_TEST_SSHD_CONFIG_DIR:-/etc/ssh/sshd_config.d}"
+
+  port="$(
+    {
+      [ -r "${config_path}" ] && printf '%s\n' "${config_path}"
+      if [ -d "${config_dir}" ]; then
+        find "${config_dir}" -maxdepth 1 -type f -name '*.conf' | sort
+      fi
+    } | while IFS= read -r file_path; do
+      awk '
+        /^[[:space:]]*#/ { next }
+        /^[[:space:]]*$/ { next }
+        tolower($1) == "port" { value = $2 }
+        END { if (value != "") print value }
+      ' "${file_path}"
+    done | tail -n1
+  )"
+
+  if [ -n "${port}" ]; then
+    vpskit_validate_tcp_port "${port}" || return 1
+    printf '%s\n' "${port}"
+  fi
+}
+
+vpskit_detect_ssh_port_from_listener() {
+  local output=""
+  local port
+
+  if [ -n "${VPSKIT_TEST_SSHD_LISTENERS:-}" ]; then
+    output="${VPSKIT_TEST_SSHD_LISTENERS}"
+  elif command -v ss >/dev/null 2>&1; then
+    output="$(ss -H -ltnp 2>/dev/null | grep -F 'sshd' || true)"
+  fi
+
+  port="$(printf '%s\n' "${output}" | awk '
+    /sshd/ {
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /:[0-9]+$/) {
+          value = $i
+          sub(/^.*:/, "", value)
+          print value
+          exit
+        }
+      }
+    }
+  ')"
+
+  if [ -n "${port}" ]; then
+    vpskit_validate_tcp_port "${port}" || return 1
+    printf '%s\n' "${port}"
+  fi
+}
+
+vpskit_authorized_keys_source() {
+  printf '%s\n' "${VPSKIT_TEST_AUTHORIZED_KEYS_SOURCE:-/root/.ssh/authorized_keys}"
+}
+
+vpskit_require_root_ssh_key_source() {
+  local authorized_keys
+
+  if [ "${VPSKIT_TEST_AUTHORIZED_KEYS_VALID:-}" = "yes" ]; then
+    return 0
+  fi
+
+  authorized_keys="$(vpskit_authorized_keys_source)"
   if [ ! -s "${authorized_keys}" ]; then
     vpskit_die "root SSH authorized_keys is required before hardening SSH"
     return 1
   fi
+}
+
+vpskit_verify_managed_authorized_keys() {
+  local managed_user="$1"
+  local key_path
+  local mode=""
+  local owner=""
+
+  case "${VPSKIT_TEST_AUTHORIZED_KEYS_VALID:-}" in
+    yes)
+      return 0
+      ;;
+    no)
+      vpskit_die "managed user authorized_keys verification failed"
+      return 1
+      ;;
+  esac
+
+  key_path="/home/${managed_user}/.ssh/authorized_keys"
+  if [ ! -s "${key_path}" ]; then
+    vpskit_die "managed user authorized_keys verification failed: missing or empty ${key_path}"
+    return 1
+  fi
+
+  mode="$(stat -c '%a' "${key_path}" 2>/dev/null || stat -f '%Lp' "${key_path}" 2>/dev/null || true)"
+  owner="$(stat -c '%U:%G' "${key_path}" 2>/dev/null || true)"
+
+  if [ "${mode}" != "600" ]; then
+    vpskit_die "managed user authorized_keys verification failed: expected mode 600"
+    return 1
+  fi
+
+  if [ -n "${owner}" ] && [ "${owner}" != "${managed_user}:${managed_user}" ]; then
+    vpskit_die "managed user authorized_keys verification failed: expected owner ${managed_user}:${managed_user}"
+    return 1
+  fi
+}
+
+vpskit_authorized_keys_preflight() {
+  case "${VPSKIT_TEST_AUTHORIZED_KEYS_VALID:-}" in
+    yes)
+      return 0
+      ;;
+    no)
+      vpskit_die "managed user authorized_keys verification failed"
+      return 1
+      ;;
+  esac
+}
+
+vpskit_test_list_contains_word() {
+  local needle="$1"
+  local item
+
+  for item in ${VPSKIT_TEST_MISSING_COMMANDS:-}; do
+    if [ "${item}" = "${needle}" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+vpskit_hardening_command_exists() {
+  local command_name="$1"
+
+  if vpskit_test_list_contains_word "${command_name}"; then
+    return 1
+  fi
+
+  if vpskit_is_dry_run || [ -n "${VPSKIT_TEST_COMMAND_LOG:-}" ]; then
+    return 0
+  fi
+
+  command -v "${command_name}" >/dev/null 2>&1
+}
+
+vpskit_hardening_missing_packages() {
+  local packages=()
+
+  vpskit_hardening_command_exists ufw || packages+=("ufw")
+  vpskit_hardening_command_exists fail2ban-client || packages+=("fail2ban")
+  vpskit_hardening_command_exists curl || packages+=("curl")
+  vpskit_hardening_command_exists openssl || packages+=("openssl")
+  vpskit_hardening_command_exists ss || packages+=("iproute2")
+
+  printf '%s\n' "${packages[*]}"
+}
+
+vpskit_hardening_package_preflight() {
+  local missing_packages
+
+  vpskit_systemd_available || {
+    vpskit_die "systemd/systemctl is required for Phase 1 hardening"
+    return 1
+  }
+
+  missing_packages="$(vpskit_hardening_missing_packages)"
+  if [ -z "${missing_packages}" ]; then
+    return 0
+  fi
+
+  if ! vpskit_hardening_command_exists apt-get; then
+    vpskit_die "missing required packages (${missing_packages}) and apt-get is unavailable"
+    return 1
+  fi
+
+  vpskit_run_mutation apt-get update || return 1
+  # shellcheck disable=SC2086
+  vpskit_run_mutation apt-get install -y ${missing_packages}
 }
 
 vpskit_managed_user_exists() {
@@ -95,19 +319,21 @@ vpskit_hardening_apply() {
   vpskit_run_mutation usermod -aG sudo "${managed_user}" || return 1
   vpskit_write_managed_file "/etc/sudoers.d/90-${managed_user}" 0440 "${managed_user} ALL=(ALL) NOPASSWD:ALL" || return 1
   vpskit_run_mutation mkdir -p "/home/${managed_user}/.ssh" || return 1
-  vpskit_run_mutation cp /root/.ssh/authorized_keys "/home/${managed_user}/.ssh/authorized_keys" || return 1
+  vpskit_run_mutation cp "$(vpskit_authorized_keys_source)" "/home/${managed_user}/.ssh/authorized_keys" || return 1
   vpskit_run_mutation chown -R "${managed_user}:${managed_user}" "/home/${managed_user}/.ssh" || return 1
   vpskit_run_mutation chmod 700 "/home/${managed_user}/.ssh" || return 1
   vpskit_run_mutation chmod 600 "/home/${managed_user}/.ssh/authorized_keys" || return 1
+  vpskit_verify_managed_authorized_keys "${managed_user}" || return 1
 
   vpskit_write_managed_file "/etc/ssh/sshd_config.d/99-vpskit-hardening.conf" 0644 "${sshd_content}" || return 1
   vpskit_run_mutation sshd -t || return 1
   vpskit_run_mutation systemctl reload ssh.service || return 1
 
-  vpskit_run_mutation ufw --force reset || return 1
+  vpskit_log_warn "UFW state changes cannot be fully rolled back automatically"
+  vpskit_run_mutation ufw status verbose || true
+  vpskit_run_mutation ufw allow "${ssh_port}/tcp" || return 1
   vpskit_run_mutation ufw default deny incoming || return 1
   vpskit_run_mutation ufw default allow outgoing || return 1
-  vpskit_run_mutation ufw allow "${ssh_port}/tcp" || return 1
   vpskit_run_mutation ufw --force enable || return 1
 
   vpskit_write_managed_file "/etc/fail2ban/jail.d/sshd.local" 0644 "${fail2ban_content}" || return 1
@@ -124,7 +350,8 @@ vpskit_install_hardening() {
   vpskit_validate_managed_user "${managed_user}" || return 1
   vpskit_require_root || return 1
   vpskit_require_ubuntu_2404 || return 1
-  vpskit_require_root_ssh_key_safety || return 1
+  vpskit_require_root_ssh_key_source || return 1
+  vpskit_authorized_keys_preflight || return 1
 
   if ! vpskit_sshd_config_exists && ! vpskit_is_dry_run; then
     vpskit_die "sshd config is required before hardening"
@@ -132,6 +359,7 @@ vpskit_install_hardening() {
   fi
 
   ssh_port="$(vpskit_hardening_detect_ssh_port)" || return 1
+  vpskit_hardening_package_preflight || return 1
   vpskit_transaction_init
   vpskit_hardening_apply "${managed_user}" "${ssh_port}" || status=$?
 

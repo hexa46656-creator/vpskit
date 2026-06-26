@@ -1,3 +1,5 @@
+# shellcheck disable=SC2090
+
 setup() {
   load "helpers/test_helper.bash"
   reset_vpskit_test_env
@@ -60,4 +62,50 @@ prepare_vless_env() {
   [[ "$output" == *"simulated failure after config write"* ]]
   [ ! -e "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json" ]
   [ ! -e "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/vless-reality.txt" ]
+}
+
+@test "vless reality fails closed when existing config is present without force" {
+  prepare_vless_env
+  mkdir -p "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray"
+  printf '{"existing":true}\n' >"${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json"
+
+  run vpskit_install_vless_reality
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"existing Xray config found"* ]]
+  [[ "$(cat "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json")" == *'"existing":true'* ]]
+}
+
+@test "vless reality rollback does not stop existing active xray service" {
+  prepare_vless_env
+  export VPSKIT_TEST_XRAY_SERVICE_EXISTS=yes
+  export VPSKIT_TEST_XRAY_SERVICE_ACTIVE=yes
+  export VPSKIT_TEST_XRAY_SERVICE_ENABLED=yes
+  export VPSKIT_TEST_FAIL_AFTER_SERVICE=1
+
+  run vpskit_install_vless_reality
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"simulated failure after service changes"* ]]
+  if [ -f "${VPSKIT_TEST_COMMAND_LOG}" ]; then
+    [[ "$(cat "${VPSKIT_TEST_COMMAND_LOG}")" != *"systemctl stop xray"* ]]
+    [[ "$(cat "${VPSKIT_TEST_COMMAND_LOG}")" != *"systemctl disable xray"* ]]
+  fi
+}
+
+@test "vless reality URI encodes label and query values with special characters" {
+  run vpskit_render_vless_uri \
+    "11111111-1111-4111-8111-111111111111" \
+    "203.0.113.10" \
+    "443" \
+    "weird host.example" \
+    "pub+key/with=chars" \
+    "ab cd" \
+    "VPSKit Node #1 & test"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"sni=weird%20host.example"* ]]
+  [[ "$output" == *"pbk=pub%2Bkey%2Fwith%3Dchars"* ]]
+  [[ "$output" == *"sid=ab%20cd"* ]]
+  [[ "$output" == *"#VPSKit%20Node%20%231%20%26%20test"* ]]
 }

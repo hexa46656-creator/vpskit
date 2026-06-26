@@ -22,6 +22,7 @@ setup() {
   export VPSKIT_TEST_OS_VERSION_CODENAME=noble
   export VPSKIT_TEST_UFW_AVAILABLE=yes
   export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_AUTHORIZED_KEYS_VALID=yes
   export VPSKIT_TEST_SSHD_CONFIG_PATH="${BATS_TEST_TMPDIR}/sshd_config"
   printf 'Port 2222\nPermitRootLogin yes\nPasswordAuthentication yes\n' >"${VPSKIT_TEST_SSHD_CONFIG_PATH}"
 
