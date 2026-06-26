@@ -121,7 +121,7 @@ vpskit_hysteria2_subscription_export() {
   local subscription_file
   local rendered
 
-  subscription_file="$(vpskit_hysteria2_subscription_file)"
+  subscription_file="$(vpskit_system_path "$(vpskit_hysteria2_subscription_file)")"
   if [ ! -f "${subscription_file}" ]; then
     printf 'SUB_EXPORT=fail format=hysteria2 reason=missing_subscription_file\n'
     return 1

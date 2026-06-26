@@ -20,7 +20,7 @@ source "${VPSKIT_QA_DIR}/../network/trojan_doctor.sh"
 # shellcheck source=../network/hysteria2_doctor.sh
 source "${VPSKIT_QA_DIR}/../network/hysteria2_doctor.sh"
 
-VPSKIT_QA_VERSION="v0.6.3-beta"
+VPSKIT_QA_VERSION="v0.7.0-beta"
 
 vpskit_qa_capture_output() {
   local __output_var="$1"

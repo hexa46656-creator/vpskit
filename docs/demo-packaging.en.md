@@ -4,6 +4,8 @@
 
 Create a local customer handoff bundle with safe files only.
 
+For the newer customer-facing handoff flow, prefer `vpskit sub bundle --redact --output ./vpskit-client-bundle`.
+
 ## Command
 
 ```bash
@@ -22,6 +24,8 @@ vpskit demo package --redact --output ./vpskit-demo-package
 - `security-notes.zh.md`
 - `trojan-redacted.uri`
 - `command-checklist.txt`
+
+The bundle command adds protocol-specific import files and a manifest; this demo package stays available for broader QA/demo sharing.
 
 ## Behavior
 
