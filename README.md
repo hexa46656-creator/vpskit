@@ -2,7 +2,7 @@
 
 VPSKit is a practical VPS deployment and repair toolkit.
 
-Current beta capability: `v0.6.2-beta` keeps the existing services and adds Trojan credential rotation and redacted export support:
+Current beta capability: `v0.6.3-beta` keeps the existing services and adds read-only QA plus redacted demo packaging:
 
 - VPS hardening for Ubuntu 24.04 LTS
 - Xray VLESS Reality over TCP 443 with `xtls-rprx-vision`
@@ -24,6 +24,9 @@ CLI commands:
 - `version`
 - `status`
 - `doctor`
+- `qa`
+- `qa --redact`
+- `qa --output <path>`
 - `sub show`
 - `sub formats`
 - `sub export <format>`
@@ -33,6 +36,10 @@ CLI commands:
 - `sub export trojan`
 - `sub export trojan --redact`
 - `sub validate`
+- `demo package`
+- `demo package --redact`
+- `demo package --output <dir>`
+- `demo package --force --output <dir>`
 - `fix`
 - `install hardening`
 - `install vless-reality`
@@ -56,6 +63,8 @@ sudo bash vpskit/cli/vpskit.sh install hysteria2
 sudo bash vpskit/cli/vpskit.sh install trojan
 bash vpskit/cli/vpskit.sh rotate trojan --yes
 bash vpskit/cli/vpskit.sh sub show
+bash vpskit/cli/vpskit.sh qa --redact
+bash vpskit/cli/vpskit.sh demo package --redact --output ./vpskit-demo-package
 ```
 
 After install verification:
@@ -108,6 +117,7 @@ Client export to file:
 - Trojan writes a trojan URI using the VPSKit-managed password and server address.
 - Trojan redacted export keeps the URI shape but replaces the password with `REDACTED`.
 - Validate the current VLESS Reality subscription before exporting with `bash vpskit/cli/vpskit.sh sub validate`.
+- Use `bash vpskit/cli/vpskit.sh sub export trojan --redact` or the demo package for screenshots and customer handoff.
 
 Examples:
 
@@ -139,7 +149,7 @@ Trojan:
 - The installer stores Trojan state at `/var/lib/vpskit/trojan.yaml` and `/var/lib/vpskit/trojan.env`.
 - The credential rotation flow rewrites the Trojan password, updates the Xray inbound, and restores the previous state if validation fails.
 - Use `vpskit rotate trojan --dry-run` before a real rotation, and `vpskit sub export trojan --redact` when sharing screenshots or support output.
-- v0.6.2-beta uses self-signed TLS by default and does not require a domain name, certbot, or Let's Encrypt.
+- v0.6.3-beta uses self-signed TLS by default and does not require a domain name, certbot, or Let's Encrypt.
 - Clients may need `allowInsecure=1` or a trusted cert if they enforce TLS validation.
 - TCP 8443 must be reachable externally for the service to work.
 - See [docs/trojan-client-compatibility.en.md](docs/trojan-client-compatibility.en.md) and [docs/trojan-recovery.en.md](docs/trojan-recovery.en.md).
@@ -160,6 +170,12 @@ Install guides:
 - [English](docs/install-guide.en.md)
 - [中文](docs/install-guide.zh.md)
 
+Handoff docs:
+
+- [Customer handoff](docs/customer-handoff.en.md) / [客户交付](docs/customer-handoff.zh.md)
+- [Final QA](docs/final-qa.en.md) / [最终 QA](docs/final-qa.zh.md)
+- [Demo packaging](docs/demo-packaging.en.md) / [演示打包](docs/demo-packaging.zh.md)
+
 Safety and recovery:
 
 - `install hardening` changes SSH, UFW, Fail2ban, sudoers, and the managed Linux user.
@@ -168,6 +184,7 @@ Safety and recovery:
 - When UFW is active, `install vless-reality` allows the configured Reality TCP port, default `443/tcp`; when UFW is inactive it does not enable UFW.
 - When UFW is active, `install trojan` allows `8443/tcp`; when UFW is inactive it does not enable UFW.
 - Do not share `/var/lib/vpskit/trojan.yaml` publicly; it contains the live Trojan password.
+- Use the redacted QA and demo package flows for support, screenshots, and customer delivery.
 - Default managed Linux user is `alex`.
 - File writes are transaction-backed where practical.
 - Package installation, Linux user creation, sudo group changes, UFW state changes, and service restarts are not fully reversible automatically.
@@ -195,7 +212,8 @@ Release notes:
 - See [release/v0.6.0-beta-notes.md](release/v0.6.0-beta-notes.md)
 - See [release/v0.6.0-beta-test-report.md](release/v0.6.0-beta-test-report.md)
 - See [release/v0.6.1-beta-notes.md](release/v0.6.1-beta-notes.md)
-- See [release/v0.6.2-beta-notes.md](release/v0.6.2-beta-notes.md)
+- See [release/v0.6.3-beta-notes.md](release/v0.6.3-beta-notes.md)
+- See [release/v0.6.3-beta-demo-checklist.md](release/v0.6.3-beta-demo-checklist.md)
 - See [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - See [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
 
@@ -203,7 +221,7 @@ Release notes:
 
 VPSKit 是一个实用的 VPS 部署与修复工具包。
 
-当前 beta 能力：`v0.6.2-beta` 继续支持现有能力，并加入 Trojan 凭据轮换和脱敏导出：
+当前 beta 能力：`v0.6.3-beta` 继续支持现有能力，并加入只读 QA 和脱敏演示打包：
 
 - Ubuntu 24.04 LTS VPS 安全加固
 - 基于 TCP 443 和 `xtls-rprx-vision` 的 Xray VLESS Reality
@@ -340,7 +358,7 @@ Trojan：
 - 安装器会把 Trojan 状态保存到 `/var/lib/vpskit/trojan.yaml` 和 `/var/lib/vpskit/trojan.env`。
 - 凭据轮换会更新 Trojan 密码和 Xray inbound，若校验失败会自动回滚到旧状态。
 - 轮换前可先运行 `vpskit rotate trojan --dry-run`，分享截图或工单时使用 `vpskit sub export trojan --redact`。
-- `v0.6.2-beta` 默认使用自签名 TLS，不需要域名、certbot 或 Let’s Encrypt。
+- `v0.6.3-beta` 默认使用自签名 TLS，不需要域名、certbot 或 Let’s Encrypt。
 - 客户端如强制校验证书，可能需要 `allowInsecure=1` 或信任证书。
 - TCP 8443 必须能从 VPS 外部访问，服务才会正常工作。
 - 参见 [docs/trojan-client-compatibility.zh.md](docs/trojan-client-compatibility.zh.md) 和 [docs/trojan-recovery.zh.md](docs/trojan-recovery.zh.md)。
@@ -361,6 +379,12 @@ Trojan：
 - [English](docs/install-guide.en.md)
 - [中文](docs/install-guide.zh.md)
 
+交付文档：
+
+- [客户交付](docs/customer-handoff.zh.md) / [Customer handoff](docs/customer-handoff.en.md)
+- [最终 QA](docs/final-qa.zh.md) / [Final QA](docs/final-qa.en.md)
+- [演示打包](docs/demo-packaging.zh.md) / [Demo packaging](docs/demo-packaging.en.md)
+
 安全与恢复：
 
 - `install hardening` 会修改 SSH、UFW、Fail2ban、sudoers 和受管理的 Linux 用户。
@@ -369,6 +393,7 @@ Trojan：
 - 如果 UFW 已启用，`install vless-reality` 会允许配置的 Reality TCP 端口，默认 `443/tcp`；如果 UFW 未启用，它不会主动启用 UFW。
 - 如果 UFW 已启用，`install trojan` 会允许 `8443/tcp`；如果 UFW 未启用，它不会主动启用 UFW。
 - 不要公开分享 `/var/lib/vpskit/trojan.yaml`，其中包含当前可用的 Trojan 密码。
+- 交付、截图和支持场景优先使用脱敏 QA 与演示打包。
 - 默认受管理的 Linux 用户是 `alex`。
 - 文件写入会尽量使用事务回滚。
 - 软件包安装、Linux 用户创建、sudo 组变更、UFW 状态变更和服务重启无法完全自动回滚。
@@ -396,6 +421,7 @@ Trojan：
 - 参见 [release/v0.6.0-beta-notes.md](release/v0.6.0-beta-notes.md)
 - 参见 [release/v0.6.0-beta-test-report.md](release/v0.6.0-beta-test-report.md)
 - 参见 [release/v0.6.1-beta-notes.md](release/v0.6.1-beta-notes.md)
-- 参见 [release/v0.6.2-beta-notes.md](release/v0.6.2-beta-notes.md)
+- 参见 [release/v0.6.3-beta-notes.md](release/v0.6.3-beta-notes.md)
+- 参见 [release/v0.6.3-beta-demo-checklist.md](release/v0.6.3-beta-demo-checklist.md)
 - 参见 [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - 参见 [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)

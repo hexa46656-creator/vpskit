@@ -60,21 +60,29 @@ source "${VPSKIT_ROOT}/subscription/shadowrocket_repair.sh"
 # shellcheck source=../subscription/export.sh
 source "${VPSKIT_ROOT}/subscription/export.sh"
 # shellcheck disable=SC1091
+# shellcheck source=../qa/run.sh
+source "${VPSKIT_ROOT}/qa/run.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../demo/package.sh
+source "${VPSKIT_ROOT}/demo/package.sh"
+# shellcheck disable=SC1091
 # shellcheck source=../verify/checks.sh
 source "${VPSKIT_ROOT}/verify/checks.sh"
 
 vpskit_cli_version() {
   cat <<'EOF'
-VPSKit v0.6.2-beta
-Available commands: version, status, doctor, sub, fix, install, verify, rotate
-Available components: CLI, hardening installer, VLESS Reality installer, Hysteria2 installer, Trojan installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
+VPSKit v0.6.3-beta
+Available commands: version, status, doctor, qa, sub, demo, fix, install, verify, rotate
+Available components: CLI, read-only QA, demo packaging, hardening installer, VLESS Reality installer, Hysteria2 installer, Trojan installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
 EOF
 }
 
 vpskit_cli_status() {
-  printf 'VERSION=VPSKit v0.6.2-beta\n'
+  printf 'VERSION=VPSKit v0.6.3-beta\n'
   vpskit_system_inspection_summary
   printf 'CLI=available\n'
+  printf 'QA=available\n'
+  printf 'DEMO_PACKAGE=available\n'
   printf 'SUBSCRIPTION_REPAIR=available\n'
   printf 'SUBSCRIPTION_EXPORT=available\n'
   printf 'DNS_HEALTH=available\n'
@@ -402,6 +410,10 @@ EOF
   esac
 }
 
+vpskit_cli_demo() {
+  vpskit_demo_dispatch "$@"
+}
+
 vpskit_cli_verify() {
   local target="${1:-}"
 
@@ -440,6 +452,10 @@ Usage:
   vpskit version
   vpskit status
   vpskit doctor
+  vpskit qa
+  vpskit qa --redact
+  vpskit qa --output <path>
+  vpskit qa --redact --output <path>
   vpskit sub
   vpskit sub show
   vpskit sub formats
@@ -452,6 +468,11 @@ Usage:
   vpskit sub export trojan --redact --output <path>
   vpskit sub export trojan --redact -o <path>
   vpskit sub validate
+  vpskit demo package
+  vpskit demo package --redact
+  vpskit demo package --output <dir>
+  vpskit demo package --redact --output <dir>
+  vpskit demo package --force --output <dir>
   vpskit fix
   vpskit install hardening
   vpskit install vless-reality
@@ -545,8 +566,14 @@ main() {
     doctor)
       vpskit_cli_doctor
       ;;
+    qa)
+      vpskit_cli_qa "$@"
+      ;;
     sub)
       vpskit_cli_sub "$@"
+      ;;
+    demo)
+      vpskit_cli_demo "$@"
       ;;
     fix)
       vpskit_cli_fix "$@"
