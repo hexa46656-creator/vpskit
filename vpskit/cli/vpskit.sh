@@ -48,22 +48,26 @@ source "${VPSKIT_ROOT}/network/hysteria2_doctor.sh"
 # shellcheck source=../subscription/shadowrocket_repair.sh
 source "${VPSKIT_ROOT}/subscription/shadowrocket_repair.sh"
 # shellcheck disable=SC1091
+# shellcheck source=../subscription/export.sh
+source "${VPSKIT_ROOT}/subscription/export.sh"
+# shellcheck disable=SC1091
 # shellcheck source=../verify/checks.sh
 source "${VPSKIT_ROOT}/verify/checks.sh"
 
 vpskit_cli_version() {
   cat <<'EOF'
-VPSKit v0.3.1-beta
+VPSKit v0.4.0-beta
 Available commands: version, status, doctor, sub, fix, install, verify
-Available components: CLI, hardening installer, VLESS Reality installer, DNS health, TCP probe, fallback report, Shadowrocket repair
+Available components: CLI, hardening installer, VLESS Reality installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
 EOF
 }
 
 vpskit_cli_status() {
-  printf 'VERSION=VPSKit v0.3.1-beta\n'
+  printf 'VERSION=VPSKit v0.4.0-beta\n'
   vpskit_system_inspection_summary
   printf 'CLI=available\n'
   printf 'SUBSCRIPTION_REPAIR=available\n'
+  printf 'SUBSCRIPTION_EXPORT=available\n'
   printf 'DNS_HEALTH=available\n'
   printf 'TCP_PROBE=available\n'
   printf 'FALLBACK_REPORT=available\n'
@@ -119,15 +123,43 @@ vpskit_cli_tcp_443_status() {
 
 vpskit_cli_sub() {
   local subcommand="${1:-show}"
-  local subscription_file
-  local output_dir="${VPSKIT_OUTPUT_DIR:-${VPSKIT_ROOT}/output}"
-  local default_output="${output_dir}/final_links.txt"
 
   case "${subcommand}" in
     show)
+      local subscription_file
+      local output_dir="${VPSKIT_OUTPUT_DIR:-${VPSKIT_ROOT}/output}"
+      local default_output="${output_dir}/final_links.txt"
+
+      subscription_file="$(vpskit_default_subscription_file)"
+      if [ -f "${subscription_file}" ]; then
+        cat "${subscription_file}"
+        return 0
+      fi
+
+      if [ -f "${default_output}" ]; then
+        cat "${default_output}"
+        return 0
+      fi
+
+      printf 'No subscription file is configured.\n'
+      printf 'Next step: set VPSKIT_SUBSCRIPTION_FILE or generate one with the release docs.\n'
+      return 0
+      ;;
+    formats)
+      vpskit_subscription_supported_formats
+      return 0
+      ;;
+    export)
+      vpskit_cli_sub_export "${2:-}"
+      return $?
       ;;
     "" | help | --help | -h)
-      printf 'Usage: vpskit sub show\n'
+      cat <<'EOF'
+Usage:
+  vpskit sub show
+  vpskit sub formats
+  vpskit sub export <format>
+EOF
       return 0
       ;;
     *)
@@ -135,20 +167,64 @@ vpskit_cli_sub() {
       return 1
       ;;
   esac
+}
 
-  subscription_file="$(vpskit_default_subscription_file)"
-  if [ -f "${subscription_file}" ]; then
-    cat "${subscription_file}"
-    return 0
+vpskit_cli_sub_export() {
+  local format="${1:-}"
+  local subscription_file
+  local uri
+  local rendered
+
+  case "${format}" in
+    raw | shadowrocket | v2rayng | base64 | clash-meta | sing-box)
+      ;;
+    "" | help | --help | -h)
+      cat <<'EOF'
+Usage:
+  vpskit sub export raw
+  vpskit sub export base64
+  vpskit sub export shadowrocket
+  vpskit sub export v2rayng
+  vpskit sub export clash-meta
+  vpskit sub export sing-box
+EOF
+      return 0
+      ;;
+    *)
+      vpskit_die "unknown sub export format: ${format}"
+      return 1
+      ;;
+  esac
+
+  if subscription_file="$(vpskit_subscription_resolve_file)"; then
+    :
+  else
+    printf '%s\n' "${subscription_file}"
+    return 1
   fi
 
-  if [ -f "${default_output}" ]; then
-    cat "${default_output}"
-    return 0
+  case "${format}" in
+    raw | shadowrocket | v2rayng)
+      vpskit_subscription_print_file "${subscription_file}"
+      return 0
+      ;;
+  esac
+
+  if uri="$(vpskit_subscription_first_uri "${subscription_file}")"; then
+    :
+  else
+    printf '%s\n' "${uri}"
+    return 1
   fi
 
-  printf 'No subscription file is configured.\n'
-  printf 'Next step: set VPSKIT_SUBSCRIPTION_FILE or generate one with the release docs.\n'
+  if rendered="$(vpskit_subscription_render_export "${format}" "${uri}")"; then
+    :
+  else
+    printf '%s\n' "${rendered}"
+    return 1
+  fi
+
+  printf '%s\n' "${rendered}"
 }
 
 vpskit_cli_fix() {
@@ -219,7 +295,7 @@ EOF
   esac
 }
 
-vpskit_cli_usage() {
+  vpskit_cli_usage() {
   cat <<'EOF'
 Usage:
   vpskit version
@@ -227,6 +303,8 @@ Usage:
   vpskit doctor
   vpskit sub
   vpskit sub show
+  vpskit sub formats
+  vpskit sub export <format>
   vpskit fix
   vpskit install hardening
   vpskit install vless-reality
