@@ -208,6 +208,30 @@ prepare_verify_hysteria2_rootfs() {
   [[ "$output" == *"VERIFY_HYSTERIA2=fail"* ]]
 }
 
+@test "verify hysteria2 fails when udp 443 is owned by another process" {
+  prepare_verify_hysteria2_rootfs
+  export VPSKIT_TEST_UDP_443_OWNER=nginx
+
+  run bash "${CLI_PATH}" verify hysteria2
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"UDP_443_LISTENER=fail expected=hysteria actual=nginx"* ]]
+  [[ "$output" == *"VERIFY_HYSTERIA2=fail"* ]]
+}
+
+@test "verify hysteria2 reports unknown listener when ss is unavailable" {
+  prepare_verify_hysteria2_rootfs
+  export PATH="/usr/bin:/bin"
+  export VPSKIT_TEST_UDP_443_OWNER=""
+  export VPSKIT_TEST_UDP_443_LISTENERS=""
+
+  run bash "${CLI_PATH}" verify hysteria2
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"UDP_443_LISTENER=unknown reason=ss_unavailable"* ]]
+  [[ "$output" == *"VERIFY_HYSTERIA2=fail"* ]]
+}
+
 @test "verify hysteria2 skips inactive ufw without failing" {
   prepare_verify_hysteria2_rootfs
   export VPSKIT_TEST_UFW_STATUS="Status: inactive"

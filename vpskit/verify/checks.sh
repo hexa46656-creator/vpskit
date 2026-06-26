@@ -363,23 +363,24 @@ vpskit_verify_hysteria2_listener() {
   local owner
 
   owner="$(vpskit_hysteria2_udp_443_owner)"
-  if [ "${owner}" = "hysteria" ]; then
-    vpskit_verify_emit_check UDP_443_LISTENER pass "service=hysteria"
-    return 0
-  fi
-
-  if [ "${owner}" = "unknown" ]; then
-    if command -v ss >/dev/null 2>&1; then
-      vpskit_verify_emit_check UDP_443_LISTENER fail "expected=hysteria actual=unknown"
+  case "${owner}" in
+    hysteria)
+      vpskit_verify_emit_check UDP_443_LISTENER pass "service=hysteria"
+      return 0
+      ;;
+    not_bound)
+      vpskit_verify_emit_check UDP_443_LISTENER fail "expected=hysteria actual=not_bound"
       return 1
-    fi
-
-    vpskit_verify_emit_check UDP_443_LISTENER skip "reason=ss_unavailable"
-    return 0
-  fi
-
-  vpskit_verify_emit_check UDP_443_LISTENER fail "expected=hysteria actual=${owner:-none}"
-  return 1
+      ;;
+    unknown)
+      vpskit_verify_emit_check UDP_443_LISTENER unknown "reason=ss_unavailable"
+      return 1
+      ;;
+    *)
+      vpskit_verify_emit_check UDP_443_LISTENER fail "expected=hysteria actual=${owner:-none}"
+      return 1
+      ;;
+  esac
 }
 
 vpskit_verify_hysteria2_ufw() {

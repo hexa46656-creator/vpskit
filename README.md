@@ -2,7 +2,7 @@
 
 VPSKit is a practical VPS deployment and repair toolkit.
 
-Current beta capability: `v0.5.0-beta` supports:
+Current beta capability: `v0.5.1-beta` stabilizes Hysteria2 and supports:
 
 - VPS hardening for Ubuntu 24.04 LTS
 - Xray VLESS Reality over TCP 443 with `xtls-rprx-vision`
@@ -111,6 +111,10 @@ Hysteria2:
 - The installer writes the server config to `/etc/hysteria/config.yaml`.
 - The installer stores the client subscription YAML at `/var/lib/vpskit/hysteria2.yaml`.
 - `sub export hysteria2` prints the client YAML, and `--output` saves it to a file.
+- Re-running `vpskit install hysteria2` is expected to be safe when Hysteria2 is already installed.
+- After install, run `vpskit verify hysteria2` and `vpskit doctor`.
+- Recovery docs: [docs/hysteria2-recovery.en.md](docs/hysteria2-recovery.en.md) and [docs/hysteria2-recovery.zh.md](docs/hysteria2-recovery.zh.md).
+- UDP 443 must be reachable externally for the service to work.
 
 `v0.5.0-beta` adds Hysteria2 only.
 It does not add Trojan, QR code generation, SaaS, Telegram Bot, PayPal, or Web UI.
@@ -153,6 +157,8 @@ Release notes:
 - See [release/v0.4.0-beta-notes.md](release/v0.4.0-beta-notes.md)
 - See [release/v0.4.1-beta-notes.md](release/v0.4.1-beta-notes.md)
 - See [release/v0.5.0-beta-notes.md](release/v0.5.0-beta-notes.md)
+- See [release/v0.5.0-beta-test-report.md](release/v0.5.0-beta-test-report.md)
+- See [release/v0.5.1-beta-notes.md](release/v0.5.1-beta-notes.md)
 - See [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - See [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
 
@@ -160,7 +166,7 @@ Release notes:
 
 VPSKit 是一个实用的 VPS 部署与修复工具包。
 
-当前 beta 能力：`v0.5.0-beta` 支持：
+当前 beta 能力：`v0.5.1-beta` 重点稳定 Hysteria2，并支持：
 
 - Ubuntu 24.04 LTS VPS 安全加固
 - 基于 TCP 443 和 `xtls-rprx-vision` 的 Xray VLESS Reality
@@ -269,6 +275,10 @@ Hysteria2：
 - 安装器会把服务端配置写到 `/etc/hysteria/config.yaml`。
 - 安装器会把客户端订阅 YAML 保存到 `/var/lib/vpskit/hysteria2.yaml`。
 - `sub export hysteria2` 会输出客户端 YAML，`--output` 会写入文件。
+- `vpskit install hysteria2` 在已安装时重复运行应该是安全的。
+- 安装后请运行 `vpskit verify hysteria2` 和 `vpskit doctor`。
+- 恢复文档：[docs/hysteria2-recovery.en.md](docs/hysteria2-recovery.en.md) 和 [docs/hysteria2-recovery.zh.md](docs/hysteria2-recovery.zh.md)。
+- UDP 443 必须能从 VPS 外部访问，服务才会正常工作。
 
 `v0.5.0-beta` 只新增 Hysteria2。
 它不会新增 Trojan、二维码生成、SaaS、Telegram Bot、PayPal 或 Web UI。
@@ -311,5 +321,7 @@ Hysteria2：
 - 参见 [release/v0.4.0-beta-notes.md](release/v0.4.0-beta-notes.md)
 - 参见 [release/v0.4.1-beta-notes.md](release/v0.4.1-beta-notes.md)
 - 参见 [release/v0.5.0-beta-notes.md](release/v0.5.0-beta-notes.md)
+- 参见 [release/v0.5.0-beta-test-report.md](release/v0.5.0-beta-test-report.md)
+- 参见 [release/v0.5.1-beta-notes.md](release/v0.5.1-beta-notes.md)
 - 参见 [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - 参见 [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
