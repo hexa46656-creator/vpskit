@@ -129,6 +129,30 @@ setup() {
   [[ "$output" == *"UFW_443_UDP=pass status=active rule=present"* ]]
 }
 
+@test "doctor reports hysteria2 udp listener owned by another process" {
+  export VPSKIT_TEST_OS_ID=ubuntu
+  export VPSKIT_TEST_OS_VERSION_ID=24.04
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_DNS_HEALTH_RESULT='DNS_HEALTH=ok host=www.cloudflare.com system=1.1.1.1 cloudflare=1.1.1.1 google=1.1.1.1'
+  export VPSKIT_TEST_TCP_PROBE_RESULT=open
+  export VPSKIT_TEST_ROOT_DIR="${BATS_TEST_TMPDIR}/rootfs"
+  mkdir -p "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin" "${VPSKIT_TEST_ROOT_DIR}/etc/hysteria" "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/hysteria"
+  chmod +x "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/hysteria"
+  printf 'listen: :443\nauth:\n  type: password\n  password: test-password\ntls:\n  cert: /etc/hysteria/server.crt\n  key: /etc/hysteria/server.key\n' >"${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/config.yaml"
+  printf 'server: 203.0.113.10:443\nauth: test-password\ntls:\n  sni: 203.0.113.10\n  pinSHA256: test-pin\n' >"${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/hysteria2.yaml"
+  export VPSKIT_TEST_SERVICE_EXISTS="hysteria-server.service hysteria-server"
+  export VPSKIT_TEST_SERVICE_ACTIVE="hysteria-server.service hysteria-server"
+  export VPSKIT_TEST_UDP_443_LISTENERS=$'UNCONN 0 0 0.0.0.0:443 0.0.0.0:* users:(("nginx",pid=123,fd=7))'
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n443/udp ALLOW IN Anywhere'
+
+  run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"HYSTERIA2_UDP_443=owned_by_other"* ]]
+}
+
 @test "doctor reports inactive hysteria2 service state" {
   export VPSKIT_TEST_OS_ID=ubuntu
   export VPSKIT_TEST_OS_VERSION_ID=24.04
@@ -144,7 +168,7 @@ setup() {
   printf 'server: 203.0.113.10:443\nauth: test-password\ntls:\n  sni: 203.0.113.10\n  pinSHA256: test-pin\n' >"${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/hysteria2.yaml"
   export VPSKIT_TEST_SERVICE_EXISTS="hysteria-server.service hysteria-server"
   export VPSKIT_TEST_SERVICE_ACTIVE="other.service"
-  export VPSKIT_TEST_UDP_443_OWNER=unknown
+  export VPSKIT_TEST_UDP_443_LISTENERS=$'\n'
   export VPSKIT_TEST_UFW_STATUS="Status: inactive"
 
   run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
@@ -152,6 +176,7 @@ setup() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"HYSTERIA2_INSTALLED=yes"* ]]
   [[ "$output" == *"HYSTERIA2_SERVICE=inactive"* ]]
+  [[ "$output" == *"HYSTERIA2_UDP_443=not_bound"* ]]
 }
 
 @test "doctor reports inactive ufw skip for hysteria2" {
@@ -176,6 +201,29 @@ setup() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"UFW_443_UDP=skip status=inactive reason=not_enforced"* ]]
+}
+
+@test "doctor reports missing hysteria2 components clearly" {
+  export VPSKIT_TEST_OS_ID=ubuntu
+  export VPSKIT_TEST_OS_VERSION_ID=24.04
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_DNS_HEALTH_RESULT='DNS_HEALTH=ok host=www.cloudflare.com system=1.1.1.1 cloudflare=1.1.1.1 google=1.1.1.1'
+  export VPSKIT_TEST_TCP_PROBE_RESULT=open
+  export VPSKIT_TEST_ROOT_DIR="${BATS_TEST_TMPDIR}/rootfs"
+  mkdir -p "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit"
+  export VPSKIT_TEST_SERVICE_EXISTS=""
+  export VPSKIT_TEST_SERVICE_ACTIVE=""
+  export VPSKIT_TEST_UDP_443_OWNER=""
+  export VPSKIT_TEST_UFW_STATUS="Status: inactive"
+
+  run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"HYSTERIA2_INSTALLED=no"* ]]
+  [[ "$output" == *"HYSTERIA2_BINARY=missing"* ]]
+  [[ "$output" == *"HYSTERIA2_CONFIG=missing"* ]]
+  [[ "$output" == *"HYSTERIA2_SUBSCRIPTION_FILE=missing"* ]]
 }
 
 @test "reality doctor marks risky cdn targets" {

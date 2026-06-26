@@ -60,7 +60,7 @@ setup() {
   export VPSKIT_TEST_COMMAND_LOG="${BATS_TEST_TMPDIR}/commands.log"
   export VPSKIT_LOCK_PATH="${BATS_TEST_TMPDIR}/vpskit.lock"
   export VPSKIT_LOCK_METADATA_PATH="${BATS_TEST_TMPDIR}/vpskit.lock.meta"
-  export VPSKIT_TEST_UDP_PORT_IN_USE=""
+  export VPSKIT_TEST_UDP_443_OWNER=hysteria
   export VPSKIT_TEST_UFW_AVAILABLE=yes
   export VPSKIT_TEST_UFW_STATUS="Status: inactive"
   mkdir -p "${VPSKIT_TEST_ROOT_DIR}"
@@ -90,7 +90,7 @@ setup() {
   export VPSKIT_TEST_COMMAND_LOG="${BATS_TEST_TMPDIR}/commands.log"
   export VPSKIT_LOCK_PATH="${BATS_TEST_TMPDIR}/vpskit.lock"
   export VPSKIT_LOCK_METADATA_PATH="${BATS_TEST_TMPDIR}/vpskit.lock.meta"
-  export VPSKIT_TEST_UDP_PORT_IN_USE=""
+  export VPSKIT_TEST_UDP_443_OWNER=hysteria
   export VPSKIT_TEST_UFW_AVAILABLE=yes
   export VPSKIT_TEST_UFW_STATUS="Status: inactive"
   mkdir -p "${VPSKIT_TEST_ROOT_DIR}"

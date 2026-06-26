@@ -23,6 +23,28 @@ vpskit_hysteria2_installed() {
   [ -x "${bin_path}" ] && [ -f "${config_path}" ] && [ -f "${subscription_file}" ]
 }
 
+vpskit_hysteria2_binary_state() {
+  local bin_path
+
+  bin_path="$(vpskit_system_path "$(vpskit_hysteria2_bin_path)")"
+  if [ -x "${bin_path}" ]; then
+    printf 'present\n'
+  else
+    printf 'missing\n'
+  fi
+}
+
+vpskit_hysteria2_config_state() {
+  local config_path
+
+  config_path="$(vpskit_system_path "$(vpskit_hysteria2_config_path)")"
+  if [ -f "${config_path}" ]; then
+    printf 'present\n'
+  else
+    printf 'missing\n'
+  fi
+}
+
 vpskit_hysteria2_service_state() {
   if ! vpskit_systemd_available; then
     printf 'unknown\n'
@@ -50,11 +72,14 @@ vpskit_hysteria2_udp_state() {
     hysteria)
       printf 'bound\n'
       ;;
+    not_bound)
+      printf 'not_bound\n'
+      ;;
     unknown | "")
       printf 'unknown\n'
       ;;
     *)
-      printf 'not_bound\n'
+      printf 'owned_by_other\n'
       ;;
   esac
 }
@@ -98,6 +123,8 @@ vpskit_hysteria2_doctor_ufw_state() {
 
 vpskit_hysteria2_doctor() {
   local installed
+  local binary_state
+  local config_state
   local service_state
   local udp_state
   local subscription_state
@@ -107,6 +134,8 @@ vpskit_hysteria2_doctor() {
     installed="yes"
   fi
 
+  binary_state="$(vpskit_hysteria2_binary_state)"
+  config_state="$(vpskit_hysteria2_config_state)"
   service_state="$(vpskit_hysteria2_service_state)"
   udp_state="$(vpskit_hysteria2_udp_state)"
   subscription_state="$(vpskit_hysteria2_subscription_state)"
@@ -114,6 +143,8 @@ vpskit_hysteria2_doctor() {
   printf 'HYSTERIA2_PORT=%s/udp\n' "$(vpskit_hysteria2_port)"
   printf 'HYSTERIA2_UDP_NOTE=local_listener_and_firewall_state_only\n'
   printf 'HYSTERIA2_INSTALLED=%s\n' "${installed}"
+  printf 'HYSTERIA2_BINARY=%s\n' "${binary_state}"
+  printf 'HYSTERIA2_CONFIG=%s\n' "${config_state}"
   printf 'HYSTERIA2_SERVICE=%s\n' "${service_state}"
   printf 'HYSTERIA2_UDP_443=%s\n' "${udp_state}"
   printf 'HYSTERIA2_SUBSCRIPTION_FILE=%s\n' "${subscription_state}"
