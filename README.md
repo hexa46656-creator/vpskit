@@ -2,11 +2,11 @@
 
 VPSKit is a practical VPS deployment and repair toolkit.
 
-Current beta capability: `v0.3.0-beta` supports:
+Current beta capability: `v0.4.0-beta` supports:
 
 - VPS hardening for Ubuntu 24.04 LTS
 - Xray VLESS Reality over TCP 443 with `xtls-rprx-vision`
-- subscription output for Shadowrocket/v2rayNG
+- subscription export for Shadowrocket, v2rayNG, Clash Meta, sing-box, and base64 subscription bundles
 - post-install verification commands for managed SSH user and VLESS Reality state
 
 Quick start:
@@ -23,6 +23,8 @@ CLI commands:
 - `status`
 - `doctor`
 - `sub show`
+- `sub formats`
+- `sub export <format>`
 - `fix`
 - `install hardening`
 - `install vless-reality`
@@ -68,6 +70,18 @@ Shadowrocket usage:
 - Repair local subscription text with `bash vpskit/subscription/shadowrocket_repair.sh --input <file>`
 - Import the repaired output into Shadowrocket using the app's standard import flow
 
+Client export:
+
+- Shadowrocket: `bash vpskit/cli/vpskit.sh sub export shadowrocket`
+- v2rayNG: `bash vpskit/cli/vpskit.sh sub export v2rayng`
+- Clash Meta: `bash vpskit/cli/vpskit.sh sub export clash-meta`
+- sing-box: `bash vpskit/cli/vpskit.sh sub export sing-box`
+- Base64 generic subscription: `bash vpskit/cli/vpskit.sh sub export base64`
+
+v0.4.0-beta only exports the existing VLESS Reality config.
+It does not add Hysteria2 or Trojan.
+QR code generation is not included yet.
+
 Troubleshooting:
 
 - Read [docs/troubleshooting.en.md](docs/troubleshooting.en.md) or [docs/troubleshooting.zh.md](docs/troubleshooting.zh.md)
@@ -103,6 +117,7 @@ Release notes:
 
 - See [release/v0.3.0-beta-notes.md](release/v0.3.0-beta-notes.md)
 - See [release/v0.3.0-beta-test-report.md](release/v0.3.0-beta-test-report.md)
+- See [release/v0.4.0-beta-notes.md](release/v0.4.0-beta-notes.md)
 - See [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - See [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
 
@@ -110,11 +125,11 @@ Release notes:
 
 VPSKit 是一个实用的 VPS 部署与修复工具包。
 
-当前 beta 能力：`v0.3.0-beta` 支持：
+当前 beta 能力：`v0.4.0-beta` 支持：
 
 - Ubuntu 24.04 LTS VPS 安全加固
 - 基于 TCP 443 和 `xtls-rprx-vision` 的 Xray VLESS Reality
-- Shadowrocket/v2rayNG 订阅输出
+- Shadowrocket、v2rayNG、Clash Meta、sing-box 和 base64 订阅导出
 - 用于受管理 SSH 用户和 VLESS Reality 状态的安装后验证命令
 
 快速开始：
@@ -131,6 +146,8 @@ CLI 命令：
 - `status`
 - `doctor`
 - `sub show`
+- `sub formats`
+- `sub export <format>`
 - `fix`
 - `install hardening`
 - `install vless-reality`
@@ -176,6 +193,18 @@ Shadowrocket 使用：
 - 使用 `bash vpskit/subscription/shadowrocket_repair.sh --input <file>` 修复本地订阅文本
 - 通过 Shadowrocket 的标准导入流程导入修复后的输出
 
+客户端导出：
+
+- Shadowrocket：`bash vpskit/cli/vpskit.sh sub export shadowrocket`
+- v2rayNG：`bash vpskit/cli/vpskit.sh sub export v2rayng`
+- Clash Meta：`bash vpskit/cli/vpskit.sh sub export clash-meta`
+- sing-box：`bash vpskit/cli/vpskit.sh sub export sing-box`
+- 通用 base64 订阅：`bash vpskit/cli/vpskit.sh sub export base64`
+
+v0.4.0-beta 只导出现有的 VLESS Reality 配置。
+它不会新增 Hysteria2 或 Trojan。
+目前不包含二维码生成。
+
 故障排查：
 
 - 阅读 [docs/troubleshooting.zh.md](docs/troubleshooting.zh.md) 或 [docs/troubleshooting.en.md](docs/troubleshooting.en.md)
@@ -211,5 +240,6 @@ Shadowrocket 使用：
 
 - 参见 [release/v0.3.0-beta-notes.md](release/v0.3.0-beta-notes.md)
 - 参见 [release/v0.3.0-beta-test-report.md](release/v0.3.0-beta-test-report.md)
+- 参见 [release/v0.4.0-beta-notes.md](release/v0.4.0-beta-notes.md)
 - 参见 [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - 参见 [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
