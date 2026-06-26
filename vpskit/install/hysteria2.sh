@@ -352,7 +352,9 @@ vpskit_hysteria2_render_server_config() {
 
   cat <<EOF
 listen: :443
-auth: ${password}
+auth:
+  type: password
+  password: ${password}
 tls:
   cert: ${cert_path}
   key: ${key_path}
@@ -394,10 +396,97 @@ vpskit_hysteria2_service_state() {
   printf 'missing\n'
 }
 
+vpskit_hysteria2_stop_service_on_failure() {
+  local service_name
+
+  service_name="$(vpskit_hysteria2_service_name)"
+
+  if vpskit_is_test_mode; then
+    if [ -n "${VPSKIT_TEST_COMMAND_LOG:-}" ]; then
+      printf 'RUN systemctl stop %s\n' "${service_name}" >>"${VPSKIT_TEST_COMMAND_LOG}"
+    else
+      vpskit_dry_run_log "RUN systemctl stop ${service_name}"
+    fi
+    return 0
+  fi
+
+  if [ -n "${VPSKIT_TEST_COMMAND_LOG:-}" ]; then
+    printf 'RUN systemctl stop %s\n' "${service_name}" >>"${VPSKIT_TEST_COMMAND_LOG}"
+    return 0
+  fi
+
+  systemctl stop "${service_name}" || true
+}
+
+vpskit_hysteria2_udp_443_listener_owner() {
+  local output=""
+
+  if [ -n "${VPSKIT_TEST_UDP_443_OWNER:-}" ]; then
+    printf '%s\n' "${VPSKIT_TEST_UDP_443_OWNER}"
+    return 0
+  fi
+
+  if [ -n "${VPSKIT_TEST_UDP_443_LISTENERS:-}" ]; then
+    output="${VPSKIT_TEST_UDP_443_LISTENERS}"
+  elif vpskit_is_test_mode; then
+    return 2
+  elif command -v ss >/dev/null 2>&1; then
+    output="$(ss -H -lunp 'sport = :443' 2>/dev/null || true)"
+  else
+    return 2
+  fi
+
+  if [ -z "${output}" ]; then
+    printf 'unknown\n'
+    return 1
+  fi
+
+  printf '%s\n' "${output}" | awk '
+    match($0, /"([^"]+)"/, match_result) {
+      if (match_result[1] ~ /hysteria/) {
+        print "hysteria"
+      } else {
+        print match_result[1]
+      }
+      found = 1
+      exit
+    }
+    /hysteria/ { print "hysteria"; found = 1; exit }
+    NF && !found { print "unknown"; found = 1; exit }
+  '
+}
+
+vpskit_hysteria2_validate_udp_443_listener() {
+  local owner=""
+  local owner_status=0
+
+  if owner="$(vpskit_hysteria2_udp_443_listener_owner)"; then
+    owner_status=0
+  else
+    owner_status=$?
+  fi
+
+  if [ "${owner_status}" -eq 2 ]; then
+    return 2
+  fi
+
+  if [ "${owner}" = "hysteria" ]; then
+    printf 'UDP_443_LISTENER=pass service=hysteria\n'
+    return 0
+  fi
+
+  printf 'UDP_443_LISTENER=fail expected=hysteria actual=%s\n' "${owner}"
+  return 1
+}
+
 vpskit_hysteria2_wait_for_service_active() {
   local attempts=0
   local max_attempts=5
   local state="unknown"
+
+  if ! vpskit_is_test_mode; then
+    sleep 1
+  fi
 
   while [ "${attempts}" -lt "${max_attempts}" ]; do
     state="$(vpskit_hysteria2_service_state)"
@@ -476,6 +565,7 @@ vpskit_install_hysteria2() {
   local metadata
   local service_unit
   local service_state
+  local listener_status=0
   local ufw_status=""
   local ufw_summary=""
   local status=0
@@ -502,19 +592,21 @@ vpskit_install_hysteria2() {
     return 1
   fi
 
-  if command -v ss >/dev/null 2>&1; then
-    if ss -H -lun "sport = :${port}" 2>/dev/null | grep -q .; then
-      printf 'HYSTERIA2_INSTALL=fail reason=udp_443_in_use\n'
+  if ! vpskit_is_test_mode; then
+    if command -v ss >/dev/null 2>&1; then
+      if ss -H -lun "sport = :${port}" 2>/dev/null | grep -q .; then
+        printf 'HYSTERIA2_INSTALL=fail reason=udp_443_in_use\n'
+        return 1
+      fi
+    elif command -v lsof >/dev/null 2>&1; then
+      if lsof -nP -iUDP:"${port}" 2>/dev/null | grep -q .; then
+        printf 'HYSTERIA2_INSTALL=fail reason=udp_443_in_use\n'
+        return 1
+      fi
+    else
+      printf 'HYSTERIA2_INSTALL=fail reason=udp_443_check_unavailable\n'
       return 1
     fi
-  elif command -v lsof >/dev/null 2>&1; then
-    if lsof -nP -iUDP:"${port}" 2>/dev/null | grep -q .; then
-      printf 'HYSTERIA2_INSTALL=fail reason=udp_443_in_use\n'
-      return 1
-    fi
-  else
-    printf 'HYSTERIA2_INSTALL=fail reason=udp_443_check_unavailable\n'
-    return 1
   fi
 
   vpskit_hysteria2_package_preflight || return 1
@@ -598,11 +690,34 @@ vpskit_install_hysteria2() {
   if [ "${status}" -eq 0 ]; then
     service_state="$(vpskit_hysteria2_wait_for_service_active)" || status=$?
     if [ "${status}" -ne 0 ]; then
+      vpskit_hysteria2_stop_service_on_failure
       vpskit_transaction_abort
       printf 'HYSTERIA2_INSTALL=fail reason=service_inactive\n'
       printf 'HYSTERIA2_SERVICE=fail state=%s\n' "${service_state}"
       return 1
     fi
+  fi
+
+  if [ "${status}" -eq 0 ]; then
+    if vpskit_hysteria2_validate_udp_443_listener; then
+      listener_status=0
+    else
+      listener_status=$?
+    fi
+    case "${listener_status}" in
+      0)
+        :
+        ;;
+      2)
+        :
+        ;;
+      *)
+        vpskit_hysteria2_stop_service_on_failure
+        vpskit_transaction_abort
+        printf 'HYSTERIA2_INSTALL=fail reason=udp_443_not_bound\n'
+        return 1
+        ;;
+    esac
   fi
 
   if [ "${status}" -eq 0 ]; then

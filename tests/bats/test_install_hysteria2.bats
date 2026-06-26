@@ -73,6 +73,21 @@ PY
   [[ "$output" == *"HYSTERIA2_INSTALL=fail reason=service_inactive"* ]]
   [[ "$output" == *"HYSTERIA2_SERVICE=fail state=inactive"* ]]
   [[ "$output" != *"HYSTERIA2_INSTALL=pass"* ]]
+  [[ "$(cat "${VPSKIT_TEST_COMMAND_LOG}")" == *"systemctl stop hysteria-server.service"* ]]
+}
+
+@test "hysteria2 install fails when udp 443 is not bound by hysteria after restart" {
+  prepare_hysteria2_env
+  export VPSKIT_TEST_UDP_443_OWNER=nginx
+  export VPSKIT_TEST_UFW_STATUS="Status: inactive"
+
+  run vpskit_install_hysteria2
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"UDP_443_LISTENER=fail expected=hysteria actual=nginx"* ]]
+  [[ "$output" == *"HYSTERIA2_INSTALL=fail reason=udp_443_not_bound"* ]]
+  [[ "$output" != *"HYSTERIA2_INSTALL=pass"* ]]
+  [[ "$(cat "${VPSKIT_TEST_COMMAND_LOG}")" == *"systemctl stop hysteria-server.service"* ]]
 }
 
 @test "hysteria2 install allows active UFW and records the rule" {
