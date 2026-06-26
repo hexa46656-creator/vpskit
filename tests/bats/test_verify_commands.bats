@@ -34,6 +34,24 @@ prepare_verify_vless_rootfs() {
   export VPSKIT_TEST_UFW_STATUS=$'Status: active\n443/tcp ALLOW IN Anywhere'
 }
 
+prepare_verify_hysteria2_rootfs() {
+  prepare_verify_rootfs
+  mkdir -p "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin" "${VPSKIT_TEST_ROOT_DIR}/etc/hysteria"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/hysteria"
+  chmod +x "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/hysteria"
+  printf 'listen: :443\nauth: test-password\ntls:\n  cert: /etc/hysteria/server.crt\n  key: /etc/hysteria/server.key\n' >"${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/config.yaml"
+  printf 'TEST-HYSTERIA2 PRIVATE\n' >"${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/server.key"
+  printf 'TEST-HYSTERIA2 CERT\n' >"${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/server.crt"
+  printf 'server: 203.0.113.10:443\nauth: test-password\ntls:\n  sni: 203.0.113.10\n  pinSHA256: test-pin\n' >"${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/hysteria2.yaml"
+  printf 'VPSKIT_HYSTERIA2_SERVER_IP=203.0.113.10\nVPSKIT_HYSTERIA2_PASSWORD=test-password\nVPSKIT_HYSTERIA2_PIN_SHA256=test-pin\n' >"${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/hysteria2.env"
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_SERVICE_EXISTS="hysteria-server.service hysteria-server"
+  export VPSKIT_TEST_SERVICE_ACTIVE="hysteria-server.service hysteria-server"
+  export VPSKIT_TEST_UDP_443_OWNER=hysteria
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n443/udp ALLOW IN Anywhere'
+}
+
 @test "verify help lists read-only verification targets" {
   run bash "${CLI_PATH}" verify help
 
@@ -129,4 +147,96 @@ prepare_verify_vless_rootfs() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"TCP_443_LISTENER=fail expected=xray actual=nginx"* ]]
   [[ "$output" == *"VERIFY_VLESS_REALITY=fail"* ]]
+}
+
+@test "verify hysteria2 passes for active service and allowed udp 443" {
+  prepare_verify_hysteria2_rootfs
+
+  run bash "${CLI_PATH}" verify hysteria2
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"HYSTERIA2_BINARY=pass path="* ]]
+  [[ "$output" == *"HYSTERIA2_CONFIG=pass path="* ]]
+  [[ "$output" == *"HYSTERIA2_SERVICE=pass state=active"* ]]
+  [[ "$output" == *"UDP_443_LISTENER=pass service=hysteria"* ]]
+  [[ "$output" == *"HYSTERIA2_SUBSCRIPTION_FILE=pass path="* ]]
+  [[ "$output" == *"UFW_443_UDP=pass status=active rule=present"* ]]
+  [[ "$output" == *"VERIFY_HYSTERIA2=pass"* ]]
+}
+
+@test "verify hysteria2 fails when binary is missing" {
+  prepare_verify_hysteria2_rootfs
+  rm "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/hysteria"
+
+  run bash "${CLI_PATH}" verify hysteria2
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"HYSTERIA2_BINARY=fail path=missing"* ]]
+  [[ "$output" == *"VERIFY_HYSTERIA2=fail"* ]]
+}
+
+@test "verify hysteria2 fails when config is missing" {
+  prepare_verify_hysteria2_rootfs
+  rm "${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/config.yaml"
+
+  run bash "${CLI_PATH}" verify hysteria2
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"HYSTERIA2_CONFIG=fail path="* ]]
+  [[ "$output" == *"VERIFY_HYSTERIA2=fail"* ]]
+}
+
+@test "verify hysteria2 fails when subscription file is missing" {
+  prepare_verify_hysteria2_rootfs
+  rm "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/hysteria2.yaml"
+
+  run bash "${CLI_PATH}" verify hysteria2
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"HYSTERIA2_SUBSCRIPTION_FILE=fail path="* ]]
+  [[ "$output" == *"VERIFY_HYSTERIA2=fail"* ]]
+}
+
+@test "verify hysteria2 fails when service is inactive" {
+  prepare_verify_hysteria2_rootfs
+  export VPSKIT_TEST_SERVICE_ACTIVE=""
+
+  run bash "${CLI_PATH}" verify hysteria2
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"HYSTERIA2_SERVICE=fail state=inactive"* ]]
+  [[ "$output" == *"VERIFY_HYSTERIA2=fail"* ]]
+}
+
+@test "verify hysteria2 skips inactive ufw without failing" {
+  prepare_verify_hysteria2_rootfs
+  export VPSKIT_TEST_UFW_STATUS="Status: inactive"
+
+  run bash "${CLI_PATH}" verify hysteria2
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"UFW_443_UDP=skip status=inactive reason=not_enforced"* ]]
+  [[ "$output" == *"VERIFY_HYSTERIA2=pass"* ]]
+}
+
+@test "verify hysteria2 fails when active ufw is missing udp 443" {
+  prepare_verify_hysteria2_rootfs
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n22/tcp ALLOW IN Anywhere'
+
+  run bash "${CLI_PATH}" verify hysteria2
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"UFW_443_UDP=fail status=active rule=missing"* ]]
+  [[ "$output" == *"VERIFY_HYSTERIA2=fail"* ]]
+}
+
+@test "verify hysteria2 does not accept v6-only udp 443 ufw rules as an ipv4 pass" {
+  prepare_verify_hysteria2_rootfs
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n443/udp (v6) ALLOW IN Anywhere (v6)'
+
+  run bash "${CLI_PATH}" verify hysteria2
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"UFW_443_UDP=fail status=active rule=missing"* ]]
+  [[ "$output" == *"VERIFY_HYSTERIA2=fail"* ]]
 }

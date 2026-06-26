@@ -199,6 +199,32 @@ vpskit_verify_ufw_allows_443_tcp() {
   '
 }
 
+vpskit_verify_ufw_allows_443_udp() {
+  local ufw_status="$1"
+
+  printf '%s\n' "${ufw_status}" | awk '
+    {
+      line = $0
+      sub(/^[[:space:]]*\[[[:space:]]*[0-9]+[[:space:]]*\][[:space:]]*/, "", line)
+      if (line ~ /\(v6\)/) {
+        next
+      }
+
+      field_count = split(line, fields, /[[:space:]]+/)
+      if (fields[1] != "443/udp") {
+        next
+      }
+
+      for (i = 2; i <= field_count; i++) {
+        if (fields[i] == "ALLOW") {
+          found = 1
+        }
+      }
+    }
+    END { exit !found }
+  '
+}
+
 vpskit_verify_ufw_status() {
   if [ -n "${VPSKIT_TEST_UFW_STATUS:-}" ]; then
     vpskit_ufw_status
@@ -270,6 +296,134 @@ vpskit_verify_vless_reality() {
     printf 'VERIFY_VLESS_REALITY=pass\n'
   else
     printf 'VERIFY_VLESS_REALITY=fail\n'
+  fi
+
+  return "${status}"
+}
+
+vpskit_verify_hysteria2_binary() {
+  local bin_path
+
+  bin_path="$(vpskit_system_path "$(vpskit_hysteria2_bin_path)")"
+  if [ -x "${bin_path}" ]; then
+    vpskit_verify_emit_check HYSTERIA2_BINARY pass "path=${bin_path}"
+    return 0
+  fi
+
+  vpskit_verify_emit_check HYSTERIA2_BINARY fail "path=missing"
+  return 1
+}
+
+vpskit_verify_hysteria2_config() {
+  local config_path
+
+  config_path="$(vpskit_system_path "$(vpskit_hysteria2_config_path)")"
+  if [ -f "${config_path}" ]; then
+    vpskit_verify_emit_check HYSTERIA2_CONFIG pass "path=${config_path}"
+    return 0
+  fi
+
+  vpskit_verify_emit_check HYSTERIA2_CONFIG fail "path=${config_path}"
+  return 1
+}
+
+vpskit_verify_hysteria2_subscription_file() {
+  local subscription_file
+
+  subscription_file="$(vpskit_system_path "$(vpskit_hysteria2_subscription_file)")"
+  if [ -s "${subscription_file}" ]; then
+    vpskit_verify_emit_check HYSTERIA2_SUBSCRIPTION_FILE pass "path=${subscription_file}"
+    return 0
+  fi
+
+  vpskit_verify_emit_check HYSTERIA2_SUBSCRIPTION_FILE fail "path=${subscription_file}"
+  return 1
+}
+
+vpskit_verify_hysteria2_service() {
+  if ! vpskit_systemd_available; then
+    vpskit_verify_emit_check HYSTERIA2_SERVICE skip "reason=systemd_unavailable"
+    return 0
+  fi
+
+  if vpskit_service_active "$(vpskit_hysteria2_service_name)" || vpskit_service_active "$(vpskit_hysteria2_service_unit_name).service"; then
+    vpskit_verify_emit_check HYSTERIA2_SERVICE pass "state=active"
+    return 0
+  fi
+
+  if vpskit_service_exists "$(vpskit_hysteria2_service_name)" || vpskit_service_exists "$(vpskit_hysteria2_service_unit_name).service"; then
+    vpskit_verify_emit_check HYSTERIA2_SERVICE fail "state=inactive"
+  else
+    vpskit_verify_emit_check HYSTERIA2_SERVICE fail "state=missing"
+  fi
+  return 1
+}
+
+vpskit_verify_hysteria2_listener() {
+  local owner
+
+  owner="$(vpskit_hysteria2_udp_443_owner)"
+  if [ "${owner}" = "hysteria" ]; then
+    vpskit_verify_emit_check UDP_443_LISTENER pass "service=hysteria"
+    return 0
+  fi
+
+  if [ "${owner}" = "unknown" ]; then
+    if command -v ss >/dev/null 2>&1; then
+      vpskit_verify_emit_check UDP_443_LISTENER fail "expected=hysteria actual=unknown"
+      return 1
+    fi
+
+    vpskit_verify_emit_check UDP_443_LISTENER skip "reason=ss_unavailable"
+    return 0
+  fi
+
+  vpskit_verify_emit_check UDP_443_LISTENER fail "expected=hysteria actual=${owner:-none}"
+  return 1
+}
+
+vpskit_verify_hysteria2_ufw() {
+  local ufw_status
+
+  ufw_status="$(vpskit_hysteria2_ufw_status 2>/dev/null || true)"
+  if ! vpskit_ufw_available && [ -z "${ufw_status}" ]; then
+    vpskit_verify_emit_check UFW_443_UDP skip "reason=ufw_unavailable"
+    return 0
+  fi
+
+  if printf '%s\n' "${ufw_status}" | grep -qi 'inactive'; then
+    vpskit_verify_emit_check UFW_443_UDP skip "status=inactive reason=not_enforced"
+    return 0
+  fi
+
+  if printf '%s\n' "${ufw_status}" | grep -qi 'active'; then
+    if vpskit_verify_ufw_allows_443_udp "${ufw_status}"; then
+      vpskit_verify_emit_check UFW_443_UDP pass "status=active rule=present"
+      return 0
+    fi
+
+    vpskit_verify_emit_check UFW_443_UDP fail "status=active rule=missing"
+    return 1
+  fi
+
+  vpskit_verify_emit_check UFW_443_UDP skip "status=unknown"
+  return 0
+}
+
+vpskit_verify_hysteria2() {
+  local status=0
+
+  vpskit_verify_hysteria2_binary || status=1
+  vpskit_verify_hysteria2_config || status=1
+  vpskit_verify_hysteria2_subscription_file || status=1
+  vpskit_verify_hysteria2_service || status=1
+  vpskit_verify_hysteria2_listener || status=1
+  vpskit_verify_hysteria2_ufw || status=1
+
+  if [ "${status}" -eq 0 ]; then
+    printf 'VERIFY_HYSTERIA2=pass\n'
+  else
+    printf 'VERIFY_HYSTERIA2=fail\n'
   fi
 
   return "${status}"

@@ -27,6 +27,9 @@ source "${VPSKIT_ROOT}/install/hardening.sh"
 # shellcheck source=../install/vless_reality.sh
 source "${VPSKIT_ROOT}/install/vless_reality.sh"
 # shellcheck disable=SC1091
+# shellcheck source=../install/hysteria2.sh
+source "${VPSKIT_ROOT}/install/hysteria2.sh"
+# shellcheck disable=SC1091
 # shellcheck source=../network/dns_health.sh
 source "${VPSKIT_ROOT}/network/dns_health.sh"
 # shellcheck disable=SC1091
@@ -56,14 +59,14 @@ source "${VPSKIT_ROOT}/verify/checks.sh"
 
 vpskit_cli_version() {
   cat <<'EOF'
-VPSKit v0.4.1-beta
+VPSKit v0.5.0-beta
 Available commands: version, status, doctor, sub, fix, install, verify
-Available components: CLI, hardening installer, VLESS Reality installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
+Available components: CLI, hardening installer, VLESS Reality installer, Hysteria2 installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
 EOF
 }
 
 vpskit_cli_status() {
-  printf 'VERSION=VPSKit v0.4.1-beta\n'
+  printf 'VERSION=VPSKit v0.5.0-beta\n'
   vpskit_system_inspection_summary
   printf 'CLI=available\n'
   printf 'SUBSCRIPTION_REPAIR=available\n'
@@ -71,6 +74,7 @@ vpskit_cli_status() {
   printf 'DNS_HEALTH=available\n'
   printf 'TCP_PROBE=available\n'
   printf 'FALLBACK_REPORT=available\n'
+  printf 'HYSTERIA2=available\n'
   printf 'SAFETY=simulation-only\n'
 }
 
@@ -171,6 +175,7 @@ Usage:
   vpskit sub export <format>
   vpskit sub export <format> --output <path>
   vpskit sub export <format> -o <path>
+  vpskit sub export hysteria2
   vpskit sub validate
 EOF
       return 0
@@ -192,7 +197,7 @@ vpskit_cli_sub_export() {
   shift || true
 
   case "${format}" in
-    raw | shadowrocket | v2rayng | base64 | clash-meta | sing-box)
+    raw | shadowrocket | v2rayng | base64 | clash-meta | sing-box | hysteria2)
       ;;
     "" | help | --help | -h)
       cat <<'EOF'
@@ -203,6 +208,7 @@ Usage:
   vpskit sub export v2rayng
   vpskit sub export clash-meta
   vpskit sub export sing-box
+  vpskit sub export hysteria2
   vpskit sub export <format> --output <path>
   vpskit sub export <format> -o <path>
 EOF
@@ -232,6 +238,25 @@ EOF
 
     shift || true
   done
+
+  if [ "${format}" = "hysteria2" ]; then
+    if rendered="$(vpskit_hysteria2_subscription_export)"; then
+      :
+    else
+      printf '%s\n' "${rendered}"
+      return 1
+    fi
+
+    if [ -n "${output_path}" ]; then
+      if vpskit_subscription_write_output_file "${format}" "${output_path}" "${rendered}"; then
+        return 0
+      fi
+      return 1
+    fi
+
+    printf '%s\n' "${rendered}"
+    return 0
+  fi
 
   if subscription_file="$(vpskit_subscription_resolve_file)"; then
     :
@@ -333,11 +358,15 @@ vpskit_cli_install() {
     vless-reality)
       vpskit_with_lock vpskit_install_vless_reality
       ;;
+    hysteria2)
+      vpskit_with_lock vpskit_install_hysteria2
+      ;;
     "" | help | --help | -h)
       cat <<'EOF'
 Usage:
   vpskit install hardening
   vpskit install vless-reality
+  vpskit install hysteria2
 EOF
       ;;
     *)
@@ -357,11 +386,15 @@ vpskit_cli_verify() {
     vless-reality)
       vpskit_verify_vless_reality
       ;;
+    hysteria2)
+      vpskit_verify_hysteria2
+      ;;
     "" | help | --help | -h)
       cat <<'EOF'
 Usage:
   vpskit verify ssh-user
   vpskit verify vless-reality
+  vpskit verify hysteria2
 EOF
       ;;
     *)
@@ -383,12 +416,15 @@ Usage:
   vpskit sub export <format>
   vpskit sub export <format> --output <path>
   vpskit sub export <format> -o <path>
+  vpskit sub export hysteria2
   vpskit sub validate
   vpskit fix
   vpskit install hardening
   vpskit install vless-reality
+  vpskit install hysteria2
   vpskit verify ssh-user
   vpskit verify vless-reality
+  vpskit verify hysteria2
 EOF
 }
 
