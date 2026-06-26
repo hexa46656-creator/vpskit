@@ -15,6 +15,7 @@ prepare_vless_env() {
   export VPSKIT_TEST_OS_ID=ubuntu
   export VPSKIT_TEST_OS_VERSION_ID=24.04
   export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_SERVICE_ACTIVE="xray xray.service"
   export VPSKIT_TEST_ROOT_DIR="${BATS_TEST_TMPDIR}/rootfs"
   export VPSKIT_TEST_COMMAND_LOG="${BATS_TEST_TMPDIR}/commands.log"
   export VPSKIT_TEST_PUBLIC_IP="203.0.113.10"
@@ -45,8 +46,12 @@ prepare_vless_env() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"VLESS_REALITY_URI=vless://11111111-1111-4111-8111-111111111111@203.0.113.10:443"* ]]
+  [[ "$output" == *"XRAY_SERVICE=active"* ]]
+  [[ "$output" == *"TCP_PORT=443"* ]]
+  [[ "$output" == *"UFW_443_TCP="* ]]
   [[ "$output" == *"flow=xtls-rprx-vision"* ]]
   [[ "$output" == *"pbk=public-test-key"* ]]
+  [[ "$output" == *"CLIENT_URI=vless://11111111-1111-4111-8111-111111111111@203.0.113.10:443"* ]]
   [ -s "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json" ]
   [ -s "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/vless-reality.txt" ]
   [[ "$(cat "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/vless-reality.txt")" == vless://11111111-1111-4111-8111-111111111111@203.0.113.10:443* ]]

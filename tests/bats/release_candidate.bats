@@ -15,7 +15,7 @@ setup() {
 @test "version command works" {
   run bash "${CLI_PATH}" version
   [ "$status" -eq 0 ]
-  [[ "$output" == *"VPSKit v2.0.0-beta"* ]]
+  [[ "$output" == *"VPSKit v0.3.1-beta"* ]]
 }
 
 @test "status does not mutate files" {
@@ -63,6 +63,11 @@ setup() {
   local manifest="${PROJECT_ROOT}/release/v2.0.0-beta-manifest.json"
   [ -f "${manifest}" ]
   run python3 -c 'import json,sys; data=json.load(open(sys.argv[1], encoding="utf-8")); assert data["version"] == "v2.0.0-beta"' "${manifest}"
+  [ "$status" -eq 0 ]
+}
+
+@test "README after-install verification examples remain accurate" {
+  run bash -lc "grep -F 'bash vpskit/cli/vpskit.sh verify ssh-user' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify vless-reality' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh sub show' '${PROJECT_ROOT}/README.md'"
   [ "$status" -eq 0 ]
 }
 

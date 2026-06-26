@@ -460,5 +460,7 @@ vpskit_install_hardening() {
   vpskit_transaction_commit
   printf 'HARDENING_USER=%s\n' "${managed_user}"
   printf 'SSH_PORT=%s\n' "${ssh_port}"
+  printf 'ROOT_SSH_SESSION=keep_open_until_second_terminal_verified\n'
   printf 'Open a second terminal and verify: ssh -i <matching-private-key> -p %s %s@%s\n' "${ssh_port}" "${managed_user}" "$(vpskit_hardening_detect_server_ip)"
+  printf 'DO_NOT_CLOSE_ROOT_SSH=before_alex_login_verified\n'
 }

@@ -1,6 +1,8 @@
 {
   "name": "VPSKit",
   "version": "v2.0.0-beta",
+  "status": "historical",
+  "supersededBy": "v0.3.x beta line",
   "branch": "release/v2.0.0-beta",
   "releaseType": "beta",
   "packageModel": "commercial cli toolkit",

@@ -5,6 +5,7 @@ set -euo pipefail
 PROJECT_ROOT="$(git -C "${BATS_TEST_DIRNAME}" rev-parse --show-toplevel)"
 
 load_core() {
+  # shellcheck disable=SC1091
   source "${PROJECT_ROOT}/vpskit/core/common.sh"
   # shellcheck disable=SC1090
   source "${PROJECT_ROOT}/vpskit/core/$1"
@@ -35,6 +36,10 @@ reset_vpskit_test_env() {
   unset VPSKIT_TEST_SSHD_LISTENERS
   unset VPSKIT_TEST_AUTHORIZED_KEYS_SOURCE
   unset VPSKIT_TEST_AUTHORIZED_KEYS_VALID
+  unset VPSKIT_TEST_MANAGED_USER_EXISTS
+  unset VPSKIT_TEST_MANAGED_USER_GROUPS
+  unset VPSKIT_TEST_SSH_DIR_OWNER
+  unset VPSKIT_TEST_AUTHORIZED_KEYS_OWNER
   unset VPSKIT_TEST_MISSING_COMMANDS
   unset VPSKIT_TEST_COMMAND_LOG
   unset VPSKIT_TEST_ROOT_DIR
