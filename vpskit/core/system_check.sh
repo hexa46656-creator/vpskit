@@ -21,6 +21,7 @@ vpskit_detect_os_id() {
     return 1
   fi
 
+  # shellcheck disable=SC1091
   . /etc/os-release
   if [ -z "${ID:-}" ]; then
     vpskit_die "unable to detect OS ID"
@@ -41,6 +42,7 @@ vpskit_detect_os_version_id() {
     return 1
   fi
 
+  # shellcheck disable=SC1091
   . /etc/os-release
   if [ -z "${VERSION_ID:-}" ]; then
     vpskit_die "unable to detect OS version"
@@ -61,6 +63,7 @@ vpskit_detect_os_version_codename() {
     return 0
   fi
 
+  # shellcheck disable=SC1091
   . /etc/os-release
   printf '%s\n' "${VERSION_CODENAME:-}"
 }
@@ -111,6 +114,22 @@ vpskit_require_supported_ubuntu() {
       vpskit_die "unsupported Ubuntu version: ${version_id}"
       ;;
   esac
+}
+
+vpskit_require_ubuntu_2404() {
+  local detected
+  local version_id
+
+  detected="$(vpskit_detect_os_release)" || return 1
+  version_id="${detected#* }"
+
+  vpskit_require_ubuntu || return 1
+
+  if [ "${version_id}" = "24.04" ]; then
+    return 0
+  fi
+
+  vpskit_die "Ubuntu 24.04 LTS is required for Phase 1 install targets"
 }
 
 vpskit_command_exists() {

@@ -6,6 +6,7 @@ PROJECT_ROOT="$(git -C "${BATS_TEST_DIRNAME}" rev-parse --show-toplevel)"
 
 load_core() {
   source "${PROJECT_ROOT}/vpskit/core/common.sh"
+  # shellcheck disable=SC1090
   source "${PROJECT_ROOT}/vpskit/core/$1"
 }
 
@@ -27,6 +28,21 @@ reset_vpskit_test_env() {
   unset VPSKIT_TEST_UFW_AVAILABLE
   unset VPSKIT_TEST_UFW_STATUS
   unset VPSKIT_TEST_SSHD_CONFIG_PATH
+  unset VPSKIT_TEST_COMMAND_LOG
+  unset VPSKIT_TEST_ROOT_DIR
+  unset VPSKIT_TEST_PUBLIC_IP
+  unset VPSKIT_TEST_UUID
+  unset VPSKIT_TEST_X25519_OUTPUT
+  unset VPSKIT_TEST_SHORT_ID
+  unset VPSKIT_TEST_XRAY_BIN
+  unset VPSKIT_TEST_FAIL_AFTER_CONFIG
+  unset VPSKIT_MANAGED_USER
+  unset VPSKIT_SSH_PORT
+  unset VPSKIT_XRAY_PORT
+  unset VPSKIT_XRAY_CONFIG_PATH
+  unset VPSKIT_XRAY_TEMPLATE_PATH
+  unset VPSKIT_SUBSCRIPTION_FILE
+  unset VPSKIT_SUBSCRIPTION_DIR
   unset VPSKIT_REALITY_SERVER_NAME
   unset VPSKIT_REALITY_DEST
   unset VPSKIT_TROJAN_DOMAIN

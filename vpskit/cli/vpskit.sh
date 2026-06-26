@@ -21,6 +21,12 @@ source "${VPSKIT_ROOT}/core/transaction.sh"
 # shellcheck source=../core/safety.sh
 source "${VPSKIT_ROOT}/core/safety.sh"
 # shellcheck disable=SC1091
+# shellcheck source=../install/hardening.sh
+source "${VPSKIT_ROOT}/install/hardening.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../install/vless_reality.sh
+source "${VPSKIT_ROOT}/install/vless_reality.sh"
+# shellcheck disable=SC1091
 # shellcheck source=../network/dns_health.sh
 source "${VPSKIT_ROOT}/network/dns_health.sh"
 # shellcheck disable=SC1091
@@ -45,8 +51,8 @@ source "${VPSKIT_ROOT}/subscription/shadowrocket_repair.sh"
 vpskit_cli_version() {
   cat <<'EOF'
 VPSKit v2.0.0-beta
-Available commands: version, status, doctor, sub, fix
-Available components: CLI, DNS health, TCP probe, fallback report, Shadowrocket repair
+Available commands: version, status, doctor, sub, fix, install
+Available components: CLI, hardening installer, VLESS Reality installer, DNS health, TCP probe, fallback report, Shadowrocket repair
 EOF
 }
 
@@ -87,12 +93,32 @@ vpskit_cli_doctor() {
 }
 
 vpskit_cli_sub() {
+  local subcommand="${1:-show}"
   local subscription_file="${VPSKIT_SUBSCRIPTION_FILE:-}"
+  local managed_subscription="/var/lib/vpskit/vless-reality.txt"
   local output_dir="${VPSKIT_OUTPUT_DIR:-${VPSKIT_ROOT}/output}"
   local default_output="${output_dir}/final_links.txt"
 
+  case "${subcommand}" in
+    show)
+      ;;
+    "" | help | --help | -h)
+      printf 'Usage: vpskit sub show\n'
+      return 0
+      ;;
+    *)
+      vpskit_die "unknown sub command: ${subcommand}"
+      return 1
+      ;;
+  esac
+
   if [ -n "${subscription_file}" ] && [ -f "${subscription_file}" ]; then
     cat "${subscription_file}"
+    return 0
+  fi
+
+  if [ -f "${managed_subscription}" ]; then
+    cat "${managed_subscription}"
     return 0
   fi
 
@@ -125,6 +151,30 @@ vpskit_cli_fix() {
   vpskit_fallback_report "${dns_state}" "${tcp_state}"
 }
 
+vpskit_cli_install() {
+  local target="${1:-}"
+
+  case "${target}" in
+    hardening)
+      vpskit_with_lock vpskit_install_hardening
+      ;;
+    vless-reality)
+      vpskit_with_lock vpskit_install_vless_reality
+      ;;
+    "" | help | --help | -h)
+      cat <<'EOF'
+Usage:
+  vpskit install hardening
+  vpskit install vless-reality
+EOF
+      ;;
+    *)
+      vpskit_die "unknown install target: ${target}"
+      return 1
+      ;;
+  esac
+}
+
 vpskit_cli_usage() {
   cat <<'EOF'
 Usage:
@@ -132,7 +182,10 @@ Usage:
   vpskit status
   vpskit doctor
   vpskit sub
+  vpskit sub show
   vpskit fix
+  vpskit install hardening
+  vpskit install vless-reality
 EOF
 }
 
@@ -151,10 +204,13 @@ main() {
       vpskit_cli_doctor
       ;;
     sub)
-      vpskit_cli_sub
+      vpskit_cli_sub "$@"
       ;;
     fix)
       vpskit_cli_fix "$@"
+      ;;
+    install)
+      vpskit_cli_install "$@"
       ;;
     "" | help | --help | -h)
       vpskit_cli_usage

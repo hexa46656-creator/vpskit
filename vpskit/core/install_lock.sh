@@ -33,6 +33,11 @@ vpskit_acquire_lock() {
   lock_path="$(vpskit_lock_path)"
   lock_dir="$(vpskit_lock_dir)"
 
+  if vpskit_is_dry_run; then
+    vpskit_dry_run_log "LOCK ${lock_path}"
+    return 0
+  fi
+
   if vpskit_lock_is_held; then
     vpskit_die "lock already exists: ${lock_path}"
     return 1
@@ -49,6 +54,11 @@ vpskit_release_lock() {
 
   lock_path="$(vpskit_lock_path)"
   metadata_path="$(vpskit_lock_metadata_path)"
+
+  if vpskit_is_dry_run; then
+    vpskit_dry_run_log "UNLOCK ${lock_path}"
+    return 0
+  fi
 
   rm -f "${lock_path}" "${metadata_path}"
   return 0

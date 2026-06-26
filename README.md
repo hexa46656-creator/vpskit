@@ -1,12 +1,12 @@
-# VPSKit v2.0.0-beta
+# VPSKit Phase 1
 
-VPSKit is a commercial VPS VPN deployment and repair toolkit.
+VPSKit is a practical VPS deployment and repair toolkit.
 
-Supported protocols:
+Phase 1 includes:
 
-- VLESS Reality
-- Hysteria2
-- Trojan
+- VPS hardening for Ubuntu 24.04 LTS
+- Xray VLESS Reality over TCP 443 with `xtls-rprx-vision`
+- subscription output for Shadowrocket/v2rayNG
 
 Quick start:
 
@@ -21,12 +21,31 @@ CLI commands:
 - `version`
 - `status`
 - `doctor`
-- `sub`
+- `sub show`
 - `fix`
+- `install hardening`
+- `install vless-reality`
+
+Phase 1 install examples:
+
+```bash
+sudo bash vpskit/cli/vpskit.sh install hardening
+sudo bash vpskit/cli/vpskit.sh install vless-reality
+bash vpskit/cli/vpskit.sh sub show
+```
+
+Not included yet:
+
+- Hysteria2 installer
+- Trojan installer
+- SaaS control plane
+- Telegram Bot
+- PayPal or billing automation
+- Web UI
 
 Shadowrocket usage:
 
-- Run `bash vpskit/cli/vpskit.sh sub`
+- Run `bash vpskit/cli/vpskit.sh sub show`
 - Repair local subscription text with `bash vpskit/subscription/shadowrocket_repair.sh --input <file>`
 - Import the repaired output into Shadowrocket using the app's standard import flow
 
@@ -43,8 +62,9 @@ Install guides:
 
 Safety and recovery:
 
-- This release is read-only or local-file-only unless you explicitly provide an output path to a repair helper.
-- It does not modify SSH, UFW, Fail2ban, systemd, firewall, or other VPS system configuration.
+- `install hardening` changes SSH, UFW, Fail2ban, sudoers, and the managed Linux user.
+- `install vless-reality` writes Xray config, starts `xray.service`, and saves subscription output under `/var/lib/vpskit/`.
+- Default managed Linux user is `alex`.
 - If a repair produces unexpected output, keep the original input file and re-run the repair helper on a copy.
 
 Uninstall:
@@ -62,13 +82,13 @@ Release notes:
 
 ## 中文
 
-VPSKit 是一个面向商业交付的 VPS VPN 部署与修复工具包。
+VPSKit 是一个实用的 VPS 部署与修复工具包。
 
-支持协议：
+Phase 1 包含：
 
-- VLESS Reality
-- Hysteria2
-- Trojan
+- Ubuntu 24.04 LTS VPS 安全加固
+- 基于 TCP 443 和 `xtls-rprx-vision` 的 Xray VLESS Reality
+- Shadowrocket/v2rayNG 订阅输出
 
 快速开始：
 
@@ -83,12 +103,31 @@ CLI 命令：
 - `version`
 - `status`
 - `doctor`
-- `sub`
+- `sub show`
 - `fix`
+- `install hardening`
+- `install vless-reality`
+
+Phase 1 安装示例：
+
+```bash
+sudo bash vpskit/cli/vpskit.sh install hardening
+sudo bash vpskit/cli/vpskit.sh install vless-reality
+bash vpskit/cli/vpskit.sh sub show
+```
+
+尚未包含：
+
+- Hysteria2 安装器
+- Trojan 安装器
+- SaaS 控制台
+- Telegram Bot
+- PayPal 或计费自动化
+- Web UI
 
 Shadowrocket 使用：
 
-- 运行 `bash vpskit/cli/vpskit.sh sub`
+- 运行 `bash vpskit/cli/vpskit.sh sub show`
 - 使用 `bash vpskit/subscription/shadowrocket_repair.sh --input <file>` 修复本地订阅文本
 - 通过 Shadowrocket 的标准导入流程导入修复后的输出
 
@@ -105,8 +144,9 @@ Shadowrocket 使用：
 
 安全与恢复：
 
-- 除非你显式为修复 helper 提供输出路径，否则本版本只读或仅处理本地文件。
-- 它不会修改 SSH、UFW、Fail2ban、systemd、防火墙或其他 VPS 系统配置。
+- `install hardening` 会修改 SSH、UFW、Fail2ban、sudoers 和受管理的 Linux 用户。
+- `install vless-reality` 会写入 Xray 配置、启动 `xray.service`，并把订阅输出保存到 `/var/lib/vpskit/`。
+- 默认受管理的 Linux 用户是 `alex`。
 - 如果修复后的输出不符合预期，请保留原始输入文件，并在副本上重新运行修复 helper。
 
 卸载：
