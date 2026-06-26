@@ -18,6 +18,12 @@ Trojan runs inside Xray, so process-level checks show `xray` owning TCP 8443. Th
 - SNI: the exported `sni` value, or the server IP if your client needs a manual override
 - `allowInsecure`: `true` or `1` when the client enforces certificate validation
 
+## Credential Rotation
+
+- If the URI leaks, run `vpskit rotate trojan --yes` and re-import the new URI into each client.
+- Use `vpskit rotate trojan --dry-run` before a real rotation to confirm the local state is ready.
+- Use `vpskit sub export trojan --redact` for screenshots, issue threads, and support messages.
+
 VPSKit v0.6.0-beta and v0.6.1-beta use self-signed TLS for Trojan. Clients that do not trust the certificate must enable `allowInsecure` or install the certificate trust chain manually.
 
 ## Import Notes
@@ -36,4 +42,3 @@ VPSKit v0.6.0-beta and v0.6.1-beta use self-signed TLS for Trojan. Clients that 
 - `allowInsecure` disabled: turn it on for self-signed beta installs.
 - Copied URI lost special characters: re-export the URI and avoid apps that reformat links.
 - Server shows `xray`: that is normal. Xray is the process; Trojan is the inbound protocol.
-

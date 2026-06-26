@@ -86,6 +86,28 @@ vpskit_default_subscription_file() {
   printf '%s/vless-reality.txt\n' "${VPSKIT_SUBSCRIPTION_DIR:-/var/lib/vpskit}"
 }
 
+vpskit_redact_sensitive_value() {
+  local value="${1:-}"
+  local prefix_length="${2:-4}"
+  local suffix_length="${3:-4}"
+  local value_length
+  local suffix_start
+
+  if [ -z "${value}" ]; then
+    printf 'REDACTED\n'
+    return 0
+  fi
+
+  value_length="${#value}"
+  if [ "${value_length}" -le $((prefix_length + suffix_length + 3)) ]; then
+    printf 'REDACTED\n'
+    return 0
+  fi
+
+  suffix_start=$((value_length - suffix_length))
+  printf '%s...%s\n' "${value:0:prefix_length}" "${value:suffix_start:suffix_length}"
+}
+
 vpskit_run_mutation() {
   if vpskit_is_dry_run; then
     vpskit_dry_run_log "RUN $*"

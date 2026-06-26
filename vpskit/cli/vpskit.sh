@@ -33,6 +33,9 @@ source "${VPSKIT_ROOT}/install/hysteria2.sh"
 # shellcheck source=../install/trojan.sh
 source "${VPSKIT_ROOT}/install/trojan.sh"
 # shellcheck disable=SC1091
+# shellcheck source=../rotate/trojan.sh
+source "${VPSKIT_ROOT}/rotate/trojan.sh"
+# shellcheck disable=SC1091
 # shellcheck source=../network/dns_health.sh
 source "${VPSKIT_ROOT}/network/dns_health.sh"
 # shellcheck disable=SC1091
@@ -62,14 +65,14 @@ source "${VPSKIT_ROOT}/verify/checks.sh"
 
 vpskit_cli_version() {
   cat <<'EOF'
-VPSKit v0.6.1-beta
-Available commands: version, status, doctor, sub, fix, install, verify
+VPSKit v0.6.2-beta
+Available commands: version, status, doctor, sub, fix, install, verify, rotate
 Available components: CLI, hardening installer, VLESS Reality installer, Hysteria2 installer, Trojan installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
 EOF
 }
 
 vpskit_cli_status() {
-  printf 'VERSION=VPSKit v0.6.1-beta\n'
+  printf 'VERSION=VPSKit v0.6.2-beta\n'
   vpskit_system_inspection_summary
   printf 'CLI=available\n'
   printf 'SUBSCRIPTION_REPAIR=available\n'
@@ -181,6 +184,9 @@ Usage:
   vpskit sub export <format> -o <path>
   vpskit sub export hysteria2
   vpskit sub export trojan
+  vpskit sub export trojan --redact
+  vpskit sub export trojan --redact --output <path>
+  vpskit sub export trojan --redact -o <path>
   vpskit sub validate
 EOF
       return 0
@@ -215,6 +221,9 @@ Usage:
   vpskit sub export sing-box
   vpskit sub export hysteria2
   vpskit sub export trojan
+  vpskit sub export trojan --redact
+  vpskit sub export trojan --redact --output <path>
+  vpskit sub export trojan --redact -o <path>
   vpskit sub export <format> --output <path>
   vpskit sub export <format> -o <path>
 EOF
@@ -225,6 +234,13 @@ EOF
       return 1
       ;;
   esac
+
+  if [ "${format}" = "trojan" ]; then
+    if vpskit_trojan_subscription_export "$@"; then
+      return 0
+    fi
+    return 1
+  fi
 
   while [ "$#" -gt 0 ]; do
     case "${1:-}" in
@@ -262,20 +278,6 @@ EOF
 
     printf '%s\n' "${rendered}"
     return 0
-  fi
-
-  if [ "${format}" = "trojan" ]; then
-    if [ -n "${output_path}" ]; then
-      if vpskit_trojan_subscription_export --output "${output_path}"; then
-        return 0
-      fi
-      return 1
-    fi
-
-    if vpskit_trojan_subscription_export; then
-      return 0
-    fi
-    return 1
   fi
 
   if subscription_file="$(vpskit_subscription_resolve_file)"; then
@@ -446,6 +448,9 @@ Usage:
   vpskit sub export <format> -o <path>
   vpskit sub export hysteria2
   vpskit sub export trojan
+  vpskit sub export trojan --redact
+  vpskit sub export trojan --redact --output <path>
+  vpskit sub export trojan --redact -o <path>
   vpskit sub validate
   vpskit fix
   vpskit install hardening
@@ -456,7 +461,74 @@ Usage:
   vpskit verify vless-reality
   vpskit verify hysteria2
   vpskit verify trojan
+  vpskit rotate trojan
+  vpskit rotate trojan --yes
+  vpskit rotate trojan --dry-run
 EOF
+}
+
+vpskit_cli_rotate() {
+  local target="${1:-}"
+  local yes_flag=0
+  local dry_run_flag=0
+
+  shift || true
+
+  case "${target}" in
+    trojan)
+      ;;
+    "" | help | --help | -h)
+      cat <<'EOF'
+Usage:
+  vpskit rotate trojan
+  vpskit rotate trojan --yes
+  vpskit rotate trojan --dry-run
+EOF
+      return 0
+      ;;
+    *)
+      vpskit_die "unknown rotate target: ${target}"
+      return 1
+      ;;
+  esac
+
+  while [ "$#" -gt 0 ]; do
+    case "${1:-}" in
+      --yes)
+        yes_flag=1
+        ;;
+      --dry-run)
+        dry_run_flag=1
+        ;;
+      "" | help | --help | -h)
+        cat <<'EOF'
+Usage:
+  vpskit rotate trojan
+  vpskit rotate trojan --yes
+  vpskit rotate trojan --dry-run
+EOF
+        return 0
+        ;;
+      *)
+        vpskit_die "unknown rotate option: ${1}"
+        return 1
+        ;;
+    esac
+
+    shift || true
+  done
+
+  if [ "${dry_run_flag}" -eq 1 ]; then
+    VPSKIT_DRY_RUN=1 vpskit_rotate_trojan
+    return $?
+  fi
+
+  if [ "${yes_flag}" -eq 1 ]; then
+    VPSKIT_TROJAN_ROTATE_YES=1 vpskit_with_lock vpskit_rotate_trojan
+    return $?
+  fi
+
+  vpskit_with_lock vpskit_rotate_trojan
 }
 
 main() {
@@ -484,6 +556,9 @@ main() {
       ;;
     verify)
       vpskit_cli_verify "$@"
+      ;;
+    rotate)
+      vpskit_cli_rotate "$@"
       ;;
     "" | help | --help | -h)
       vpskit_cli_usage

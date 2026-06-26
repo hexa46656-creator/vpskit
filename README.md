@@ -2,7 +2,7 @@
 
 VPSKit is a practical VPS deployment and repair toolkit.
 
-Current beta capability: `v0.6.1-beta` keeps the existing services and stabilizes Trojan compatibility:
+Current beta capability: `v0.6.2-beta` keeps the existing services and adds Trojan credential rotation and redacted export support:
 
 - VPS hardening for Ubuntu 24.04 LTS
 - Xray VLESS Reality over TCP 443 with `xtls-rprx-vision`
@@ -31,6 +31,7 @@ CLI commands:
 - `sub export <format> -o <path>`
 - `sub export hysteria2`
 - `sub export trojan`
+- `sub export trojan --redact`
 - `sub validate`
 - `fix`
 - `install hardening`
@@ -41,6 +42,9 @@ CLI commands:
 - `verify vless-reality`
 - `verify hysteria2`
 - `verify trojan`
+- `rotate trojan`
+- `rotate trojan --yes`
+- `rotate trojan --dry-run`
 
 Phase 1 install examples:
 
@@ -50,6 +54,7 @@ sudo bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install vless-reality
 sudo bash vpskit/cli/vpskit.sh install hysteria2
 sudo bash vpskit/cli/vpskit.sh install trojan
+bash vpskit/cli/vpskit.sh rotate trojan --yes
 bash vpskit/cli/vpskit.sh sub show
 ```
 
@@ -92,6 +97,7 @@ Client export:
 - Base64 generic subscription: `bash vpskit/cli/vpskit.sh sub export base64`
 - Hysteria2: `bash vpskit/cli/vpskit.sh sub export hysteria2`
 - Trojan: `bash vpskit/cli/vpskit.sh sub export trojan`
+- Trojan redacted export: `bash vpskit/cli/vpskit.sh sub export trojan --redact`
 
 Client export to file:
 
@@ -100,6 +106,7 @@ Client export to file:
 - sing-box writes JSON files that can be imported directly by sing-box.
 - Base64 writes a generic subscription bundle for clients that expect encoded subscription text.
 - Trojan writes a trojan URI using the VPSKit-managed password and server address.
+- Trojan redacted export keeps the URI shape but replaces the password with `REDACTED`.
 - Validate the current VLESS Reality subscription before exporting with `bash vpskit/cli/vpskit.sh sub validate`.
 
 Examples:
@@ -109,6 +116,7 @@ bash vpskit/cli/vpskit.sh sub export clash-meta --output /tmp/vpskit-clash.yaml
 bash vpskit/cli/vpskit.sh sub export sing-box --output /tmp/vpskit-sing-box.json
 bash vpskit/cli/vpskit.sh sub export hysteria2 --output /tmp/vpskit-hysteria2.yaml
 bash vpskit/cli/vpskit.sh sub export trojan --output /tmp/vpskit-trojan.txt
+bash vpskit/cli/vpskit.sh sub export trojan --redact --output /tmp/vpskit-trojan-redacted.txt
 bash vpskit/cli/vpskit.sh sub validate
 ```
 
@@ -129,10 +137,13 @@ Trojan:
 - Trojan is a compatibility fallback. VLESS Reality remains the primary recommendation.
 - The installer writes the Trojan TLS cert and key to `/etc/vpskit/trojan/server.crt` and `/etc/vpskit/trojan/server.key`.
 - The installer stores Trojan state at `/var/lib/vpskit/trojan.yaml` and `/var/lib/vpskit/trojan.env`.
-- v0.6.1-beta uses self-signed TLS by default and does not require a domain name, certbot, or Let's Encrypt.
+- The credential rotation flow rewrites the Trojan password, updates the Xray inbound, and restores the previous state if validation fails.
+- Use `vpskit rotate trojan --dry-run` before a real rotation, and `vpskit sub export trojan --redact` when sharing screenshots or support output.
+- v0.6.2-beta uses self-signed TLS by default and does not require a domain name, certbot, or Let's Encrypt.
 - Clients may need `allowInsecure=1` or a trusted cert if they enforce TLS validation.
 - TCP 8443 must be reachable externally for the service to work.
 - See [docs/trojan-client-compatibility.en.md](docs/trojan-client-compatibility.en.md) and [docs/trojan-recovery.en.md](docs/trojan-recovery.en.md).
+- See [docs/trojan-credential-rotation.en.md](docs/trojan-credential-rotation.en.md) and [docs/trojan-credential-rotation.zh.md](docs/trojan-credential-rotation.zh.md).
 - After install, run `vpskit verify trojan` and `vpskit doctor`.
 
 `v0.6.0-beta` adds Trojan TCP 8443 support alongside Hysteria2.
@@ -156,6 +167,7 @@ Safety and recovery:
 - `install trojan` updates the Xray config to add a Trojan inbound on TCP 8443, writes the self-signed cert/key under `/etc/vpskit/trojan/`, and saves the Trojan subscription output under `/var/lib/vpskit/trojan.yaml`.
 - When UFW is active, `install vless-reality` allows the configured Reality TCP port, default `443/tcp`; when UFW is inactive it does not enable UFW.
 - When UFW is active, `install trojan` allows `8443/tcp`; when UFW is inactive it does not enable UFW.
+- Do not share `/var/lib/vpskit/trojan.yaml` publicly; it contains the live Trojan password.
 - Default managed Linux user is `alex`.
 - File writes are transaction-backed where practical.
 - Package installation, Linux user creation, sudo group changes, UFW state changes, and service restarts are not fully reversible automatically.
@@ -183,6 +195,7 @@ Release notes:
 - See [release/v0.6.0-beta-notes.md](release/v0.6.0-beta-notes.md)
 - See [release/v0.6.0-beta-test-report.md](release/v0.6.0-beta-test-report.md)
 - See [release/v0.6.1-beta-notes.md](release/v0.6.1-beta-notes.md)
+- See [release/v0.6.2-beta-notes.md](release/v0.6.2-beta-notes.md)
 - See [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - See [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
 
@@ -190,7 +203,7 @@ Release notes:
 
 VPSKit 是一个实用的 VPS 部署与修复工具包。
 
-当前 beta 能力：`v0.6.1-beta` 继续支持现有能力，并加强 Trojan 兼容性：
+当前 beta 能力：`v0.6.2-beta` 继续支持现有能力，并加入 Trojan 凭据轮换和脱敏导出：
 
 - Ubuntu 24.04 LTS VPS 安全加固
 - 基于 TCP 443 和 `xtls-rprx-vision` 的 Xray VLESS Reality
@@ -219,6 +232,7 @@ CLI 命令：
 - `sub export <format> -o <path>`
 - `sub export hysteria2`
 - `sub export trojan`
+- `sub export trojan --redact`
 - `sub validate`
 - `fix`
 - `install hardening`
@@ -229,6 +243,9 @@ CLI 命令：
 - `verify vless-reality`
 - `verify hysteria2`
 - `verify trojan`
+- `rotate trojan`
+- `rotate trojan --yes`
+- `rotate trojan --dry-run`
 
 Phase 1 安装示例：
 
@@ -238,6 +255,7 @@ sudo bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install vless-reality
 sudo bash vpskit/cli/vpskit.sh install hysteria2
 sudo bash vpskit/cli/vpskit.sh install trojan
+bash vpskit/cli/vpskit.sh rotate trojan --yes
 bash vpskit/cli/vpskit.sh sub show
 ```
 
@@ -280,6 +298,7 @@ Shadowrocket 使用：
 - 通用 base64 订阅：`bash vpskit/cli/vpskit.sh sub export base64`
 - Hysteria2：`bash vpskit/cli/vpskit.sh sub export hysteria2`
 - Trojan：`bash vpskit/cli/vpskit.sh sub export trojan`
+- Trojan 脱敏导出：`bash vpskit/cli/vpskit.sh sub export trojan --redact`
 
 文件导出体验：
 
@@ -288,6 +307,7 @@ Shadowrocket 使用：
 - sing-box 可直接导出可导入的 JSON 文件。
 - Base64 可导出通用的编码订阅文本。
 - Trojan 会导出使用 VPSKit 管理的密码和服务器地址生成的 trojan URI。
+- Trojan 脱敏导出会保留 URI 结构，但把密码替换为 `REDACTED`。
 - 导出前可先运行 `bash vpskit/cli/vpskit.sh sub validate` 检查当前 VLESS Reality 订阅。
 
 示例：
@@ -297,6 +317,7 @@ bash vpskit/cli/vpskit.sh sub export clash-meta --output /tmp/vpskit-clash.yaml
 bash vpskit/cli/vpskit.sh sub export sing-box --output /tmp/vpskit-sing-box.json
 bash vpskit/cli/vpskit.sh sub export hysteria2 --output /tmp/vpskit-hysteria2.yaml
 bash vpskit/cli/vpskit.sh sub export trojan --output /tmp/vpskit-trojan.txt
+bash vpskit/cli/vpskit.sh sub export trojan --redact --output /tmp/vpskit-trojan-redacted.txt
 bash vpskit/cli/vpskit.sh sub validate
 ```
 
@@ -317,10 +338,13 @@ Trojan：
 - Trojan 是兼容性回退方案，VLESS Reality 仍然是首选。
 - 安装器会把 Trojan TLS 证书和私钥写到 `/etc/vpskit/trojan/server.crt` 和 `/etc/vpskit/trojan/server.key`。
 - 安装器会把 Trojan 状态保存到 `/var/lib/vpskit/trojan.yaml` 和 `/var/lib/vpskit/trojan.env`。
-- `v0.6.1-beta` 默认使用自签名 TLS，不需要域名、certbot 或 Let’s Encrypt。
+- 凭据轮换会更新 Trojan 密码和 Xray inbound，若校验失败会自动回滚到旧状态。
+- 轮换前可先运行 `vpskit rotate trojan --dry-run`，分享截图或工单时使用 `vpskit sub export trojan --redact`。
+- `v0.6.2-beta` 默认使用自签名 TLS，不需要域名、certbot 或 Let’s Encrypt。
 - 客户端如强制校验证书，可能需要 `allowInsecure=1` 或信任证书。
 - TCP 8443 必须能从 VPS 外部访问，服务才会正常工作。
 - 参见 [docs/trojan-client-compatibility.zh.md](docs/trojan-client-compatibility.zh.md) 和 [docs/trojan-recovery.zh.md](docs/trojan-recovery.zh.md)。
+- 参见 [docs/trojan-credential-rotation.en.md](docs/trojan-credential-rotation.en.md) 和 [docs/trojan-credential-rotation.zh.md](docs/trojan-credential-rotation.zh.md)。
 - 安装后请运行 `vpskit verify trojan` 和 `vpskit doctor`。
 
 `v0.6.0-beta` 新增 Trojan TCP 8443 支持，并继续包含 Hysteria2。
@@ -344,6 +368,7 @@ Trojan：
 - `install trojan` 会在 Xray 配置中添加 Trojan inbound，写入自签名证书和私钥到 `/etc/vpskit/trojan/`，并把 Trojan 订阅输出保存到 `/var/lib/vpskit/trojan.yaml`。
 - 如果 UFW 已启用，`install vless-reality` 会允许配置的 Reality TCP 端口，默认 `443/tcp`；如果 UFW 未启用，它不会主动启用 UFW。
 - 如果 UFW 已启用，`install trojan` 会允许 `8443/tcp`；如果 UFW 未启用，它不会主动启用 UFW。
+- 不要公开分享 `/var/lib/vpskit/trojan.yaml`，其中包含当前可用的 Trojan 密码。
 - 默认受管理的 Linux 用户是 `alex`。
 - 文件写入会尽量使用事务回滚。
 - 软件包安装、Linux 用户创建、sudo 组变更、UFW 状态变更和服务重启无法完全自动回滚。
@@ -371,5 +396,6 @@ Trojan：
 - 参见 [release/v0.6.0-beta-notes.md](release/v0.6.0-beta-notes.md)
 - 参见 [release/v0.6.0-beta-test-report.md](release/v0.6.0-beta-test-report.md)
 - 参见 [release/v0.6.1-beta-notes.md](release/v0.6.1-beta-notes.md)
+- 参见 [release/v0.6.2-beta-notes.md](release/v0.6.2-beta-notes.md)
 - 参见 [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - 参见 [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
