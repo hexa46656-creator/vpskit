@@ -15,7 +15,7 @@ setup() {
 @test "version command works" {
   run bash "${CLI_PATH}" version
   [ "$status" -eq 0 ]
-  [[ "$output" == *"VPSKit v0.6.0-beta"* ]]
+  [[ "$output" == *"VPSKit v0.6.1-beta"* ]]
 }
 
 @test "status does not mutate files" {
@@ -77,6 +77,15 @@ setup() {
 
 @test "release notes include trojan beta scope" {
   [ -f "${PROJECT_ROOT}/release/v0.6.0-beta-notes.md" ]
+  [ -f "${PROJECT_ROOT}/release/v0.6.0-beta-test-report.md" ]
+  [ -f "${PROJECT_ROOT}/release/v0.6.1-beta-notes.md" ]
+}
+
+@test "trojan compatibility docs exist" {
+  [ -f "${PROJECT_ROOT}/docs/trojan-client-compatibility.en.md" ]
+  [ -f "${PROJECT_ROOT}/docs/trojan-client-compatibility.zh.md" ]
+  [ -f "${PROJECT_ROOT}/docs/trojan-recovery.en.md" ]
+  [ -f "${PROJECT_ROOT}/docs/trojan-recovery.zh.md" ]
 }
 
 @test "install docs exist" {

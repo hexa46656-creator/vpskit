@@ -43,6 +43,22 @@ allowInsecure: 1
 EOF
 }
 
+prepare_trojan_subscription_file_with_values() {
+  local server="$1"
+  local password="$2"
+  local sni="$3"
+  local allow_insecure="${4:-1}"
+
+  export VPSKIT_TROJAN_SUBSCRIPTION_FILE="${BATS_TEST_TMPDIR}/trojan-custom.yaml"
+  cat >"${VPSKIT_TROJAN_SUBSCRIPTION_FILE}" <<EOF
+server: ${server}
+port: 8443
+password: ${password}
+sni: ${sni}
+allowInsecure: ${allow_insecure}
+EOF
+}
+
 test_subscription_uri="vless://11111111-1111-4111-8111-111111111111@154.26.184.229:443?encryption=none&security=reality&sni=www.cloudflare.com&fp=chrome&pbk=public-test-key&sid=abcdef1234567890&type=tcp&flow=xtls-rprx-vision#VPSKit-Reality"
 
 assert_file_ends_with_single_newline() {
@@ -413,6 +429,7 @@ PY
   run bash -c 'bash "$1" sub export trojan >"$2"' _ "${CLI_PATH}" "${output_file}"
 
   [ "$status" -eq 0 ]
+  [ "$(tr -d '\n' < "${output_file}")" = "trojan://trojan-password@203.0.113.10:8443?sni=203.0.113.10&allowInsecure=1#VPSKit-Trojan" ]
   assert_file_ends_with_single_newline "${output_file}"
 }
 
@@ -447,6 +464,38 @@ PY
 
   [ "$status" -eq 1 ]
   [ "$output" = "SUB_EXPORT=fail format=trojan reason=missing_subscription_file" ]
+}
+
+@test "sub export trojan encodes special characters and ipv6 server values" {
+  prepare_trojan_subscription_file_with_values \
+    '2001:db8::1' \
+    'p@ss word/!' \
+    'sni.example.com/needs encoding?and=yes'
+
+  local expected_uri
+  expected_uri="$(
+    python3 - <<'PY'
+from urllib.parse import quote
+
+server = "2001:db8::1"
+password = "p@ss word/!"
+sni = "sni.example.com/needs encoding?and=yes"
+
+if ":" in server and not server.startswith("["):
+    server = f"[{server}]"
+
+print(
+    f"trojan://{quote(password, safe='')}@{quote(server, safe='[]:.')}:8443?sni={quote(sni, safe='')}&allowInsecure=1#VPSKit-Trojan"
+)
+PY
+  )"
+
+  run bash "${CLI_PATH}" sub export trojan
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "${expected_uri}" ]
+  [[ "$output" == *"@[2001:db8::1]:8443?"* ]]
+  [[ "$output" == *"allowInsecure=1#VPSKit-Trojan" ]]
 }
 
 @test "sub validate passes with valid vless reality uri" {

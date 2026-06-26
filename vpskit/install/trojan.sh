@@ -667,8 +667,13 @@ if not server or not password:
 if ":" in server and not server.startswith("["):
     server = f"[{server}]"
 
+server = quote(server, safe="[]:.")
+password = quote(password, safe="")
+sni = quote(sni, safe="")
+fragment = quote("VPSKit-Trojan", safe="")
+
 print(
-    f"trojan://{quote(password, safe='')}@{server}:8443?sni={quote(sni, safe='')}&allowInsecure={allow_insecure}#VPSKit-Trojan"
+    f"trojan://{password}@{server}:8443?sni={sni}&allowInsecure={allow_insecure}#{fragment}"
 )
 PY
   )" || {
