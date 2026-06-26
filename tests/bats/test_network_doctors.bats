@@ -321,6 +321,7 @@ EOF
   run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
 
   [ "$status" -eq 0 ]
+  [[ "$output" != *"test-password"* ]]
   [[ "$output" == *"TROJAN_PORT=8443/tcp"* ]]
   [[ "$output" == *"TROJAN_INSTALLED=yes"* ]]
   [[ "$output" == *"TROJAN_COMPATIBILITY_MODE=compatibility_fallback"* ]]

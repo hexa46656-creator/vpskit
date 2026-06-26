@@ -362,6 +362,7 @@ EOF
   run bash "${CLI_PATH}" verify trojan
 
   [ "$status" -eq 0 ]
+  [[ "$output" != *"test-password"* ]]
   [[ "$output" == *"TROJAN_BINARY=pass path="* ]]
   [[ "$output" == *"TROJAN_CONFIG=pass"* ]]
   [[ "$output" == *"TROJAN_SUBSCRIPTION_FILE=pass path="* ]]

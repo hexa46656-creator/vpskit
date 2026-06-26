@@ -89,6 +89,7 @@ vpskit_subscription_write_output_file() {
   local format="$1"
   local output_path="$2"
   local content="$3"
+  local status_extra="${4:-}"
   local parent_dir
 
   parent_dir="$(dirname "${output_path}")"
@@ -108,7 +109,11 @@ vpskit_subscription_write_output_file() {
     return 1
   fi
 
-  printf 'SUB_EXPORT=pass format=%s output=%s\n' "${format}" "${output_path}"
+  if [ -n "${status_extra}" ]; then
+    printf 'SUB_EXPORT=pass format=%s output=%s %s\n' "${format}" "${output_path}" "${status_extra}"
+  else
+    printf 'SUB_EXPORT=pass format=%s output=%s\n' "${format}" "${output_path}"
+  fi
   return 0
 }
 

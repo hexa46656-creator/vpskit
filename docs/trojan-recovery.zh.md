@@ -15,6 +15,9 @@ ss -H -ltnp 'sport = :443'
 ufw status verbose
 stat -c '%U:%G %a %n' /etc/vpskit/trojan /etc/vpskit/trojan/server.crt /etc/vpskit/trojan/server.key
 cat /var/lib/vpskit/trojan.yaml
+vpskit rotate trojan --dry-run
+vpskit rotate trojan --yes
+vpskit sub export trojan --redact
 ```
 
 ## 常见失败原因
@@ -26,4 +29,4 @@ cat /var/lib/vpskit/trojan.yaml
 - 改动后 VLESS 失效：Trojan 更新必须保留现有的 443 Reality 入口。
 - 客户端拒绝自签名 TLS：开启 `allowInsecure`，或者手动信任证书。
 - Xray 提示 Trojan deprecated：这是上游提示，VPSKit 会把 Trojan 保留为兼容性回退方案。
-
+- 不要把 `/var/lib/vpskit/trojan.yaml` 贴到聊天、工单或截图里，其中包含当前可用的密码。

@@ -457,6 +457,39 @@ PY
   assert_file_ends_with_single_newline "${output_file}"
 }
 
+@test "sub export trojan --redact returns a safe uri" {
+  prepare_trojan_subscription_file
+
+  run bash "${CLI_PATH}" sub export trojan --redact
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "trojan://REDACTED@203.0.113.10:8443?sni=203.0.113.10&allowInsecure=1#VPSKit-Trojan" ]
+}
+
+@test "sub export trojan --redact --output writes file and prints redacted status" {
+  prepare_trojan_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/trojan-redacted.txt"
+
+  run bash "${CLI_PATH}" sub export trojan --redact --output "${output_file}"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUB_EXPORT=pass format=trojan output=${output_file} redacted=yes" ]
+  [ "$(tr -d '\n' < "${output_file}")" = "trojan://REDACTED@203.0.113.10:8443?sni=203.0.113.10&allowInsecure=1#VPSKit-Trojan" ]
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
+@test "sub export trojan --redact -o alias works" {
+  prepare_trojan_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/trojan-redacted-alias.txt"
+
+  run bash "${CLI_PATH}" sub export trojan --redact -o "${output_file}"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUB_EXPORT=pass format=trojan output=${output_file} redacted=yes" ]
+  [ "$(tr -d '\n' < "${output_file}")" = "trojan://REDACTED@203.0.113.10:8443?sni=203.0.113.10&allowInsecure=1#VPSKit-Trojan" ]
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
 @test "sub export trojan fails clearly when the subscription file is missing" {
   export VPSKIT_TROJAN_SUBSCRIPTION_FILE="${BATS_TEST_TMPDIR}/missing-trojan.yaml"
 

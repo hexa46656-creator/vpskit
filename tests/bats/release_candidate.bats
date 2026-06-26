@@ -15,7 +15,7 @@ setup() {
 @test "version command works" {
   run bash "${CLI_PATH}" version
   [ "$status" -eq 0 ]
-  [[ "$output" == *"VPSKit v0.6.1-beta"* ]]
+  [[ "$output" == *"VPSKit v0.6.2-beta"* ]]
 }
 
 @test "status does not mutate files" {
@@ -67,7 +67,7 @@ setup() {
 }
 
 @test "README after-install verification examples remain accurate" {
-  run bash -lc "grep -F 'bash vpskit/cli/vpskit.sh verify ssh-user' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify vless-reality' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify hysteria2' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh install trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh sub export trojan' '${PROJECT_ROOT}/README.md'"
+  run bash -lc "grep -F 'bash vpskit/cli/vpskit.sh verify ssh-user' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify vless-reality' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify hysteria2' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh install trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh sub export trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh sub export trojan --redact' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh rotate trojan --yes' '${PROJECT_ROOT}/README.md'"
   [ "$status" -eq 0 ]
 }
 
@@ -79,6 +79,7 @@ setup() {
   [ -f "${PROJECT_ROOT}/release/v0.6.0-beta-notes.md" ]
   [ -f "${PROJECT_ROOT}/release/v0.6.0-beta-test-report.md" ]
   [ -f "${PROJECT_ROOT}/release/v0.6.1-beta-notes.md" ]
+  [ -f "${PROJECT_ROOT}/release/v0.6.2-beta-notes.md" ]
 }
 
 @test "trojan compatibility docs exist" {
@@ -86,6 +87,8 @@ setup() {
   [ -f "${PROJECT_ROOT}/docs/trojan-client-compatibility.zh.md" ]
   [ -f "${PROJECT_ROOT}/docs/trojan-recovery.en.md" ]
   [ -f "${PROJECT_ROOT}/docs/trojan-recovery.zh.md" ]
+  [ -f "${PROJECT_ROOT}/docs/trojan-credential-rotation.en.md" ]
+  [ -f "${PROJECT_ROOT}/docs/trojan-credential-rotation.zh.md" ]
 }
 
 @test "install docs exist" {

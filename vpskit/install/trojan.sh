@@ -599,6 +599,7 @@ vpskit_trojan_ufw_allows_8443_tcp() {
 vpskit_trojan_subscription_export() {
   local subscription_file
   local output_path=""
+  local redact_mode=0
   local server_address=""
   local password=""
   local sni=""
@@ -611,7 +612,7 @@ vpskit_trojan_subscription_export() {
     return 1
   fi
 
-  if [ "$#" -gt 0 ]; then
+  while [ "$#" -gt 0 ]; do
     case "${1:-}" in
       --output | -o)
         shift
@@ -621,14 +622,29 @@ vpskit_trojan_subscription_export() {
         fi
         output_path="${1}"
         ;;
-      "")
+      --redact)
+        redact_mode=1
+        ;;
+      "" | help | --help | -h)
+        cat <<'EOF'
+Usage:
+  vpskit sub export trojan
+  vpskit sub export trojan --redact
+  vpskit sub export trojan --output <path>
+  vpskit sub export trojan -o <path>
+  vpskit sub export trojan --redact --output <path>
+  vpskit sub export trojan --redact -o <path>
+EOF
+        return 0
         ;;
       *)
         printf 'SUB_EXPORT=fail reason=unexpected_argument value=%s\n' "${1}"
         return 1
         ;;
     esac
-  fi
+
+    shift || true
+  done
 
   if [ -n "${output_path}" ] && [ -d "${output_path}" ]; then
     printf 'SUB_EXPORT=fail format=trojan reason=output_path_is_directory output=%s\n' "${output_path}"
@@ -641,13 +657,14 @@ vpskit_trojan_subscription_export() {
   fi
 
   rendered="$(
-    python3 - "${subscription_file}" <<'PY'
+    python3 - "${subscription_file}" "${redact_mode}" <<'PY'
 from pathlib import Path
 from urllib.parse import quote
 import sys
 
 path = Path(sys.argv[1])
 data = {}
+redact = len(sys.argv) > 2 and sys.argv[2] == "1"
 
 for raw_line in path.read_text(encoding="utf-8").splitlines():
     line = raw_line.strip()
@@ -668,7 +685,7 @@ if ":" in server and not server.startswith("["):
     server = f"[{server}]"
 
 server = quote(server, safe="[]:.")
-password = quote(password, safe="")
+password = "REDACTED" if redact else quote(password, safe="")
 sni = quote(sni, safe="")
 fragment = quote("VPSKit-Trojan", safe="")
 
@@ -682,6 +699,13 @@ PY
   }
 
   if [ -n "${output_path}" ]; then
+    if [ "${redact_mode}" -eq 1 ]; then
+      if vpskit_subscription_write_output_file trojan "${output_path}" "${rendered}" "redacted=yes"; then
+        return 0
+      fi
+      return 1
+    fi
+
     if vpskit_subscription_write_output_file trojan "${output_path}" "${rendered}"; then
       return 0
     fi

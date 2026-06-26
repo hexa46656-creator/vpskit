@@ -15,6 +15,9 @@ ss -H -ltnp 'sport = :443'
 ufw status verbose
 stat -c '%U:%G %a %n' /etc/vpskit/trojan /etc/vpskit/trojan/server.crt /etc/vpskit/trojan/server.key
 cat /var/lib/vpskit/trojan.yaml
+vpskit rotate trojan --dry-run
+vpskit rotate trojan --yes
+vpskit sub export trojan --redact
 ```
 
 ## Common Failure Causes
@@ -26,4 +29,4 @@ cat /var/lib/vpskit/trojan.yaml
 - VLESS broken after config change: the Trojan update must preserve the existing 443 Reality inbound.
 - Self-signed TLS rejected by client: enable `allowInsecure` or trust the certificate manually.
 - Xray Trojan deprecated warning: expected upstream behavior; VPSKit keeps Trojan as a compatibility fallback.
-
+- Do not paste `/var/lib/vpskit/trojan.yaml` into chat, issue trackers, or screenshots; it contains the live password.
