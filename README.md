@@ -29,10 +29,18 @@ CLI commands:
 Phase 1 install examples:
 
 ```bash
+sudo VPSKIT_AUTHORIZED_KEY_FILE="$HOME/.ssh/id_ed25519.pub" bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install vless-reality
 bash vpskit/cli/vpskit.sh sub show
 ```
+
+Managed user SSH key:
+
+- `install hardening` creates or updates the managed Linux user `alex`.
+- Prefer `VPSKIT_AUTHORIZED_KEY` or `VPSKIT_AUTHORIZED_KEY_FILE` so `alex` receives the public key that matches the private key you plan to use.
+- If no explicit key is provided, VPSKit copies root `authorized_keys`; this does not guarantee your default `ssh alex@IP` command uses the matching private key.
+- After hardening, open a second terminal and verify the exact SSH command printed by the installer before closing the root session.
 
 Not included yet:
 
@@ -64,10 +72,12 @@ Safety and recovery:
 
 - `install hardening` changes SSH, UFW, Fail2ban, sudoers, and the managed Linux user.
 - `install vless-reality` writes Xray config, starts `xray.service`, and saves subscription output under `/var/lib/vpskit/`.
+- When UFW is active, `install vless-reality` allows the configured Reality TCP port, default `443/tcp`; when UFW is inactive it does not enable UFW.
 - Default managed Linux user is `alex`.
 - File writes are transaction-backed where practical.
 - Package installation, Linux user creation, sudo group changes, UFW state changes, and service restarts are not fully reversible automatically.
 - The installer refuses to overwrite an existing Xray config unless `VPSKIT_XRAY_FORCE_OVERWRITE=1` is set.
+- The official Xray installer may emit a systemd warning about the special user `nobody`; this is a known upstream service-unit limitation for Phase 1 and is not rewritten by VPSKit yet.
 - If a repair produces unexpected output, keep the original input file and re-run the repair helper on a copy.
 
 Uninstall:
@@ -114,10 +124,18 @@ CLI 命令：
 Phase 1 安装示例：
 
 ```bash
+sudo VPSKIT_AUTHORIZED_KEY_FILE="$HOME/.ssh/id_ed25519.pub" bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install vless-reality
 bash vpskit/cli/vpskit.sh sub show
 ```
+
+受管理用户 SSH 密钥：
+
+- `install hardening` 会创建或更新受管理的 Linux 用户 `alex`。
+- 建议使用 `VPSKIT_AUTHORIZED_KEY` 或 `VPSKIT_AUTHORIZED_KEY_FILE`，确保 `alex` 收到与你计划使用的私钥匹配的公钥。
+- 如果没有显式提供公钥，VPSKit 会复制 root 的 `authorized_keys`；这并不保证默认的 `ssh alex@IP` 会使用匹配的私钥。
+- 加固完成后，请打开第二个终端，按安装器打印的 SSH 命令验证登录成功，再关闭 root 会话。
 
 尚未包含：
 
@@ -149,10 +167,12 @@ Shadowrocket 使用：
 
 - `install hardening` 会修改 SSH、UFW、Fail2ban、sudoers 和受管理的 Linux 用户。
 - `install vless-reality` 会写入 Xray 配置、启动 `xray.service`，并把订阅输出保存到 `/var/lib/vpskit/`。
+- 如果 UFW 已启用，`install vless-reality` 会允许配置的 Reality TCP 端口，默认 `443/tcp`；如果 UFW 未启用，它不会主动启用 UFW。
 - 默认受管理的 Linux 用户是 `alex`。
 - 文件写入会尽量使用事务回滚。
 - 软件包安装、Linux 用户创建、sudo 组变更、UFW 状态变更和服务重启无法完全自动回滚。
 - 如果已有 Xray 配置，除非设置 `VPSKIT_XRAY_FORCE_OVERWRITE=1`，安装器会拒绝覆盖。
+- 官方 Xray 安装器可能输出关于特殊用户 `nobody` 的 systemd 警告；这是 Phase 1 已知的上游 service unit 限制，VPSKit 暂不重写该 service。
 - 如果修复后的输出不符合预期，请保留原始输入文件，并在副本上重新运行修复 helper。
 
 卸载：

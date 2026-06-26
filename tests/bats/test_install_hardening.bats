@@ -114,6 +114,51 @@ prepare_hardening_env() {
   [[ "$(cat "${VPSKIT_DRY_RUN_MUTATION_FILE}")" == *"apt-get install -y ufw fail2ban curl openssl iproute2"* ]]
 }
 
+@test "hardening installs explicit VPSKIT_AUTHORIZED_KEY for managed user" {
+  prepare_hardening_env
+  export VPSKIT_TEST_SSHD_T_OUTPUT=$'port 2022'
+  export VPSKIT_AUTHORIZED_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKeyExample explicit@example"
+
+  run vpskit_install_hardening
+
+  [ "$status" -eq 0 ]
+  [[ "$(cat "${VPSKIT_DRY_RUN_MUTATION_FILE}")" == *"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKeyExample explicit@example"* ]]
+}
+
+@test "hardening installs explicit VPSKIT_AUTHORIZED_KEY_FILE for managed user" {
+  prepare_hardening_env
+  export VPSKIT_TEST_SSHD_T_OUTPUT=$'port 2022'
+  export VPSKIT_AUTHORIZED_KEY_FILE="${BATS_TEST_TMPDIR}/alex.pub"
+  printf 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCtestkey file@example\n' >"${VPSKIT_AUTHORIZED_KEY_FILE}"
+
+  run vpskit_install_hardening
+
+  [ "$status" -eq 0 ]
+  [[ "$(cat "${VPSKIT_DRY_RUN_MUTATION_FILE}")" == *"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCtestkey file@example"* ]]
+}
+
+@test "hardening rejects invalid explicit authorized key format" {
+  prepare_hardening_env
+  export VPSKIT_TEST_SSHD_T_OUTPUT=$'port 2022'
+  export VPSKIT_AUTHORIZED_KEY="not-a-valid-key"
+
+  run vpskit_install_hardening
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"invalid SSH public key format"* ]]
+}
+
+@test "hardening prints second terminal SSH verification guidance" {
+  prepare_hardening_env
+  export VPSKIT_TEST_SSHD_T_OUTPUT=$'port 2022'
+  export VPSKIT_SERVER_IP="203.0.113.10"
+
+  run vpskit_install_hardening
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Open a second terminal and verify: ssh -i <matching-private-key> -p 2022 alex@203.0.113.10"* ]]
+}
+
 @test "hardening allows SSH before enabling UFW" {
   prepare_hardening_env
   export VPSKIT_TEST_SSHD_T_OUTPUT=$'port 2022'

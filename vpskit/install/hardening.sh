@@ -140,8 +140,67 @@ vpskit_authorized_keys_source() {
   printf '%s\n' "${VPSKIT_TEST_AUTHORIZED_KEYS_SOURCE:-/root/.ssh/authorized_keys}"
 }
 
+vpskit_validate_authorized_key_line() {
+  local key_line="$1"
+
+  case "${key_line}" in
+    ssh-ed25519\ * | ssh-rsa\ * | ecdsa-sha2-*\ * | sk-ssh-*\ *)
+      return 0
+      ;;
+    *)
+      vpskit_die "invalid SSH public key format"
+      return 1
+      ;;
+  esac
+}
+
+vpskit_read_explicit_authorized_key_content() {
+  local key_line=""
+
+  if [ -n "${VPSKIT_AUTHORIZED_KEY:-}" ]; then
+    key_line="${VPSKIT_AUTHORIZED_KEY}"
+  elif [ -n "${VPSKIT_AUTHORIZED_KEY_FILE:-}" ]; then
+    if [ ! -r "${VPSKIT_AUTHORIZED_KEY_FILE}" ]; then
+      vpskit_die "authorized key file is not readable: ${VPSKIT_AUTHORIZED_KEY_FILE}"
+      return 1
+    fi
+    key_line="$(awk 'NF { print; exit }' "${VPSKIT_AUTHORIZED_KEY_FILE}")"
+  else
+    return 1
+  fi
+
+  printf '%s\n' "${key_line}"
+}
+
+vpskit_explicit_authorized_key_content() {
+  local key_line
+
+  key_line="$(vpskit_read_explicit_authorized_key_content)" || return 1
+  vpskit_validate_authorized_key_line "${key_line}" || return 1
+  printf '%s\n' "${key_line}"
+}
+
+vpskit_managed_authorized_keys_content() {
+  local explicit_key
+
+  explicit_key="$(vpskit_explicit_authorized_key_content 2>/dev/null || true)"
+  if [ -n "${explicit_key}" ]; then
+    printf '%s\n' "${explicit_key}"
+    return 0
+  fi
+
+  cat "$(vpskit_authorized_keys_source)"
+}
+
 vpskit_require_root_ssh_key_source() {
   local authorized_keys
+  local explicit_key
+
+  if [ -n "${VPSKIT_AUTHORIZED_KEY:-}" ] || [ -n "${VPSKIT_AUTHORIZED_KEY_FILE:-}" ]; then
+    explicit_key="$(vpskit_read_explicit_authorized_key_content)" || return 1
+    vpskit_validate_authorized_key_line "${explicit_key}" || return 1
+    return 0
+  fi
 
   if [ "${VPSKIT_TEST_AUTHORIZED_KEYS_VALID:-}" = "yes" ]; then
     return 0
@@ -191,6 +250,14 @@ vpskit_verify_managed_authorized_keys() {
 }
 
 vpskit_authorized_keys_preflight() {
+  local explicit_key
+
+  if [ -n "${VPSKIT_AUTHORIZED_KEY:-}" ] || [ -n "${VPSKIT_AUTHORIZED_KEY_FILE:-}" ]; then
+    explicit_key="$(vpskit_read_explicit_authorized_key_content)" || return 1
+    vpskit_validate_authorized_key_line "${explicit_key}" || return 1
+    return 0
+  fi
+
   case "${VPSKIT_TEST_AUTHORIZED_KEYS_VALID:-}" in
     yes)
       return 0
@@ -200,6 +267,28 @@ vpskit_authorized_keys_preflight() {
       return 1
       ;;
   esac
+}
+
+vpskit_hardening_detect_server_ip() {
+  if [ -n "${VPSKIT_SERVER_IP:-}" ]; then
+    printf '%s\n' "${VPSKIT_SERVER_IP}"
+    return 0
+  fi
+
+  if [ -n "${VPSKIT_TEST_PUBLIC_IP:-}" ]; then
+    printf '%s\n' "${VPSKIT_TEST_PUBLIC_IP}"
+    return 0
+  fi
+
+  if command -v curl >/dev/null 2>&1; then
+    curl -4 -fsS --max-time 5 https://api.ipify.org 2>/dev/null && return 0
+  fi
+
+  if command -v hostname >/dev/null 2>&1; then
+    hostname -I 2>/dev/null | awk '{print $1}' && return 0
+  fi
+
+  printf '<server_ip>\n'
 }
 
 vpskit_test_list_contains_word() {
@@ -319,7 +408,7 @@ vpskit_hardening_apply() {
   vpskit_run_mutation usermod -aG sudo "${managed_user}" || return 1
   vpskit_write_managed_file "/etc/sudoers.d/90-${managed_user}" 0440 "${managed_user} ALL=(ALL) NOPASSWD:ALL" || return 1
   vpskit_run_mutation mkdir -p "/home/${managed_user}/.ssh" || return 1
-  vpskit_run_mutation cp "$(vpskit_authorized_keys_source)" "/home/${managed_user}/.ssh/authorized_keys" || return 1
+  vpskit_write_managed_file "/home/${managed_user}/.ssh/authorized_keys" 0600 "$(vpskit_managed_authorized_keys_content)" || return 1
   vpskit_run_mutation chown -R "${managed_user}:${managed_user}" "/home/${managed_user}/.ssh" || return 1
   vpskit_run_mutation chmod 700 "/home/${managed_user}/.ssh" || return 1
   vpskit_run_mutation chmod 600 "/home/${managed_user}/.ssh/authorized_keys" || return 1
@@ -371,4 +460,5 @@ vpskit_install_hardening() {
   vpskit_transaction_commit
   printf 'HARDENING_USER=%s\n' "${managed_user}"
   printf 'SSH_PORT=%s\n' "${ssh_port}"
+  printf 'Open a second terminal and verify: ssh -i <matching-private-key> -p %s %s@%s\n' "${ssh_port}" "${managed_user}" "$(vpskit_hardening_detect_server_ip)"
 }

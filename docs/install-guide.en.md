@@ -15,13 +15,24 @@ bash vpskit/cli/vpskit.sh status
 bash vpskit/cli/vpskit.sh doctor
 ```
 
-## Generate Subscription
+## Phase 1 Install
 
-Use the existing subscription renderer or the beta CLI `sub` command when a subscription file is configured:
+For a clean Ubuntu 24.04 VPS, run hardening first. Prefer an explicit public key for the managed user `alex`:
 
 ```bash
-bash vpskit/cli/vpskit.sh sub
+sudo VPSKIT_AUTHORIZED_KEY_FILE="$HOME/.ssh/id_ed25519.pub" bash vpskit/cli/vpskit.sh install hardening
 ```
+
+If no explicit key is provided, VPSKit copies root `authorized_keys`. That does not guarantee default `ssh alex@IP` uses the matching private key. Open a second terminal and verify the SSH command printed by the installer before closing the root session.
+
+Then install VLESS Reality:
+
+```bash
+sudo bash vpskit/cli/vpskit.sh install vless-reality
+bash vpskit/cli/vpskit.sh sub show
+```
+
+When UFW is active, the VLESS installer allows the configured Reality TCP port, default `443/tcp`. When UFW is inactive, it does not enable UFW.
 
 ## Import to Shadowrocket
 
@@ -29,5 +40,5 @@ Open the repaired or exported subscription text and import it into Shadowrocket 
 
 ## Notes
 
-- VPSKit v2.0.0-beta is read-only unless you explicitly provide a local repair output path.
-- Do not use it to modify SSH, firewall, or systemd settings.
+- Phase 1 modifies SSH, UFW, Fail2ban, sudoers, Xray config, and systemd service state.
+- The official Xray installer may emit a systemd warning about the special user `nobody`; this is a known Phase 1 limitation.

@@ -17,12 +17,7 @@ vpskit_vless_config_path() {
 }
 
 vpskit_vless_subscription_file() {
-  if [ -n "${VPSKIT_SUBSCRIPTION_FILE:-}" ]; then
-    printf '%s\n' "${VPSKIT_SUBSCRIPTION_FILE}"
-    return 0
-  fi
-
-  printf '%s/vless-reality.txt\n' "${VPSKIT_SUBSCRIPTION_DIR:-/var/lib/vpskit}"
+  vpskit_default_subscription_file
 }
 
 vpskit_vless_config_exists() {
@@ -122,6 +117,41 @@ vpskit_vless_package_preflight() {
   vpskit_run_mutation apt-get update || return 1
   # shellcheck disable=SC2086
   vpskit_run_mutation apt-get install -y ${missing_packages}
+}
+
+vpskit_vless_ufw_status() {
+  vpskit_ufw_status 2>/dev/null || true
+}
+
+vpskit_vless_configure_ufw() {
+  local port="$1"
+  local ufw_status
+
+  ufw_status="$(vpskit_vless_ufw_status)"
+
+  if ! vpskit_ufw_available && [ -z "${ufw_status}" ]; then
+    vpskit_log_warn "UFW is not installed; skipping firewall port update"
+    return 0
+  fi
+
+  case "${ufw_status}" in
+    *inactive* | *Inactive*)
+      vpskit_log_warn "UFW is inactive; not enabling firewall. Allow ${port}/tcp before relying on UFW."
+      ;;
+    *active* | *Active*)
+      vpskit_run_mutation ufw allow "${port}/tcp" || {
+        vpskit_die "failed to allow ${port}/tcp in active UFW"
+        return 1
+      }
+      vpskit_run_mutation ufw reload || {
+        vpskit_die "failed to reload UFW after allowing ${port}/tcp"
+        return 1
+      }
+      ;;
+    *)
+      vpskit_log_warn "UFW is inactive; not enabling firewall. Allow ${port}/tcp before relying on UFW."
+      ;;
+  esac
 }
 
 vpskit_install_or_prepare_xray() {
@@ -400,6 +430,7 @@ vpskit_install_vless_reality() {
     vpskit_run_mutation systemctl daemon-reload || status=$?
     vpskit_run_mutation systemctl enable xray || status=$?
     vpskit_run_mutation systemctl restart xray || status=$?
+    vpskit_vless_configure_ufw "${port}" || status=$?
     vpskit_run_mutation systemctl is-active --quiet xray || status=$?
     if [ "${status}" -eq 0 ] && [ "${VPSKIT_TEST_FAIL_AFTER_SERVICE:-0}" = "1" ]; then
       vpskit_die "simulated failure after service changes"

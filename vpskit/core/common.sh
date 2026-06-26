@@ -66,6 +66,15 @@ vpskit_system_path() {
   printf '%s\n' "${path}"
 }
 
+vpskit_default_subscription_file() {
+  if [ -n "${VPSKIT_SUBSCRIPTION_FILE:-}" ]; then
+    printf '%s\n' "${VPSKIT_SUBSCRIPTION_FILE}"
+    return 0
+  fi
+
+  printf '%s/vless-reality.txt\n' "${VPSKIT_SUBSCRIPTION_DIR:-/var/lib/vpskit}"
+}
+
 vpskit_run_mutation() {
   if vpskit_is_dry_run; then
     vpskit_dry_run_log "RUN $*"

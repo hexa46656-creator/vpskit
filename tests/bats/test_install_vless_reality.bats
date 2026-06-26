@@ -1,4 +1,4 @@
-# shellcheck disable=SC2090
+# shellcheck disable=SC2030,SC2031,SC2090
 
 setup() {
   load "helpers/test_helper.bash"
@@ -50,6 +50,28 @@ prepare_vless_env() {
   [ -s "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json" ]
   [ -s "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/vless-reality.txt" ]
   [[ "$(cat "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/vless-reality.txt")" == vless://11111111-1111-4111-8111-111111111111@203.0.113.10:443* ]]
+}
+
+@test "vless reality allows configured tcp port when UFW is active" {
+  prepare_vless_env
+  export VPSKIT_TEST_UFW_STATUS="Status: active"
+
+  run vpskit_install_vless_reality
+
+  [ "$status" -eq 0 ]
+  awk '/ufw allow 443\/tcp/ {allow=NR} /ufw reload/ {reload=NR} /systemctl is-active --quiet xray/ {done=NR} END {exit !(allow && reload && done && allow < done && reload < done)}' "${VPSKIT_TEST_COMMAND_LOG}"
+}
+
+@test "vless reality does not enable UFW when UFW is inactive" {
+  prepare_vless_env
+  export VPSKIT_TEST_UFW_STATUS="Status: inactive"
+
+  run vpskit_install_vless_reality
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"UFW is inactive; not enabling firewall"* ]]
+  [[ "$(cat "${VPSKIT_TEST_COMMAND_LOG}")" != *"ufw --force enable"* ]]
+  [[ "$(cat "${VPSKIT_TEST_COMMAND_LOG}")" != *"ufw allow 443/tcp"* ]]
 }
 
 @test "vless reality rolls back config and subscription on simulated failure" {

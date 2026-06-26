@@ -68,20 +68,22 @@ vpskit_cli_status() {
 }
 
 vpskit_cli_doctor() {
-  local dns_target="${VPSKIT_DOCTOR_DNS_TARGET:-localhost}"
+  local dns_target="${VPSKIT_DOCTOR_DNS_TARGET:-www.cloudflare.com}"
   local tcp_host="${VPSKIT_DOCTOR_TCP_HOST:-127.0.0.1}"
   local tcp_port="${VPSKIT_DOCTOR_TCP_PORT:-443}"
-  local subscription_file="${VPSKIT_SUBSCRIPTION_FILE:-}"
+  local subscription_file
   local dns_state
   local tcp_state
 
   vpskit_system_inspection_summary
+  vpskit_cli_tcp_443_status
   dns_state="$(vpskit_dns_health "${dns_target}" || true)"
   tcp_state="$(vpskit_tcp_probe "${tcp_host}" "${tcp_port}" || true)"
   printf 'DNS_HEALTH=%s\n' "${dns_state}"
   printf 'TCP_PROBE=%s\n' "${tcp_state}"
 
-  if [ -n "${subscription_file}" ] && [ -f "${subscription_file}" ]; then
+  subscription_file="$(vpskit_default_subscription_file)"
+  if [ -f "${subscription_file}" ]; then
     printf 'SUBSCRIPTION_FILE=present\n'
   else
     printf 'SUBSCRIPTION_FILE=missing\n'
@@ -92,10 +94,29 @@ vpskit_cli_doctor() {
   vpskit_hysteria2_doctor
 }
 
+vpskit_cli_tcp_443_status() {
+  local config_path
+
+  config_path="$(vpskit_system_path "${VPSKIT_XRAY_CONFIG_PATH:-/usr/local/etc/xray/config.json}")"
+
+  if [ "${VPSKIT_TEST_TCP_443_OWNER:-}" = "xray" ] && [ -f "${config_path}" ] && [ -f "$(vpskit_default_subscription_file)" ]; then
+    printf 'TCP_443_STATUS=in_use_expected service=xray\n'
+    return 0
+  fi
+
+  if command -v ss >/dev/null 2>&1 && [ -f "${config_path}" ] && [ -f "$(vpskit_default_subscription_file)" ]; then
+    if ss -H -ltnp 'sport = :443' 2>/dev/null | grep -q 'xray'; then
+      printf 'TCP_443_STATUS=in_use_expected service=xray\n'
+      return 0
+    fi
+  fi
+
+  printf 'TCP_443_STATUS=unverified\n'
+}
+
 vpskit_cli_sub() {
   local subcommand="${1:-show}"
-  local subscription_file="${VPSKIT_SUBSCRIPTION_FILE:-}"
-  local managed_subscription="/var/lib/vpskit/vless-reality.txt"
+  local subscription_file
   local output_dir="${VPSKIT_OUTPUT_DIR:-${VPSKIT_ROOT}/output}"
   local default_output="${output_dir}/final_links.txt"
 
@@ -112,13 +133,9 @@ vpskit_cli_sub() {
       ;;
   esac
 
-  if [ -n "${subscription_file}" ] && [ -f "${subscription_file}" ]; then
+  subscription_file="$(vpskit_default_subscription_file)"
+  if [ -f "${subscription_file}" ]; then
     cat "${subscription_file}"
-    return 0
-  fi
-
-  if [ -f "${managed_subscription}" ]; then
-    cat "${managed_subscription}"
     return 0
   fi
 

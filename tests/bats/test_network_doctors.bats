@@ -1,3 +1,5 @@
+# shellcheck disable=SC1091,SC2030,SC2031
+
 setup() {
   load "helpers/test_helper.bash"
   reset_vpskit_test_env
@@ -29,6 +31,74 @@ setup() {
   VPSKIT_TEST_DNS_HEALTH_FAIL=1 run vpskit_dns_health example.com
   [ "$status" -eq 1 ]
   [ "$output" = 'DNS_HEALTH=fail host=example.com system=empty cloudflare=empty google=empty' ]
+}
+
+@test "dns health reports unknown when resolver tool is missing" {
+  VPSKIT_TEST_DNS_HEALTH_MISSING_TOOL=dig run vpskit_dns_health
+  [ "$status" -eq 0 ]
+  [ "$output" = 'DNS_HEALTH=unknown reason=missing_tool tool=dig host=www.cloudflare.com' ]
+}
+
+@test "doctor default DNS target is cloudflare and missing resolver is unknown" {
+  export VPSKIT_TEST_OS_ID=ubuntu
+  export VPSKIT_TEST_OS_VERSION_ID=24.04
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_DNS_HEALTH_MISSING_TOOL=dig
+  export VPSKIT_TEST_TCP_PROBE_RESULT=open
+
+  run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"DNS_HEALTH=DNS_HEALTH=unknown reason=missing_tool tool=dig host=www.cloudflare.com"* ]]
+}
+
+@test "doctor reports generated default subscription file as present" {
+  export VPSKIT_TEST_OS_ID=ubuntu
+  export VPSKIT_TEST_OS_VERSION_ID=24.04
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_DNS_HEALTH_RESULT='DNS_HEALTH=ok host=www.cloudflare.com system=1.1.1.1 cloudflare=1.1.1.1 google=1.1.1.1'
+  export VPSKIT_TEST_TCP_PROBE_RESULT=open
+  export VPSKIT_SUBSCRIPTION_DIR="${BATS_TEST_TMPDIR}/vpskit"
+  mkdir -p "${VPSKIT_SUBSCRIPTION_DIR}"
+  printf 'vless://example\n' >"${VPSKIT_SUBSCRIPTION_DIR}/vless-reality.txt"
+
+  run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"SUBSCRIPTION_FILE=present"* ]]
+}
+
+@test "sub show reads generated default subscription path" {
+  export VPSKIT_SUBSCRIPTION_DIR="${BATS_TEST_TMPDIR}/vpskit"
+  mkdir -p "${VPSKIT_SUBSCRIPTION_DIR}"
+  printf 'vless://example\n' >"${VPSKIT_SUBSCRIPTION_DIR}/vless-reality.txt"
+
+  run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" sub show
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "vless://example" ]
+}
+
+@test "doctor reports tcp 443 in use by vpskit xray as expected" {
+  export VPSKIT_TEST_OS_ID=ubuntu
+  export VPSKIT_TEST_OS_VERSION_ID=24.04
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_TCP_PORT_IN_USE=443
+  export VPSKIT_TEST_TCP_443_OWNER=xray
+  export VPSKIT_TEST_DNS_HEALTH_RESULT='DNS_HEALTH=ok host=www.cloudflare.com system=1.1.1.1 cloudflare=1.1.1.1 google=1.1.1.1'
+  export VPSKIT_SUBSCRIPTION_DIR="${BATS_TEST_TMPDIR}/vpskit"
+  export VPSKIT_XRAY_CONFIG_PATH="${BATS_TEST_TMPDIR}/xray/config.json"
+  mkdir -p "${VPSKIT_SUBSCRIPTION_DIR}" "$(dirname "${VPSKIT_XRAY_CONFIG_PATH}")"
+  printf 'vless://example\n' >"${VPSKIT_SUBSCRIPTION_DIR}/vless-reality.txt"
+  printf '{"inbounds":[]}\n' >"${VPSKIT_XRAY_CONFIG_PATH}"
+
+  run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"TCP_443_STATUS=in_use_expected service=xray"* ]]
 }
 
 @test "reality doctor marks risky cdn targets" {
