@@ -117,6 +117,10 @@ vpskit_trojan_validate_candidate_xray_config() {
   "${xray_bin}" run -test -config "${candidate_config_path}"
 }
 
+vpskit_trojan_candidate_xray_config_path() {
+  mktemp "${TMPDIR:-/tmp}/vpskit-xray-candidate.XXXXXX.json"
+}
+
 vpskit_trojan_rollback_install_failure() {
   local xray_service_state=""
   local tcp_443_owner=""
@@ -819,7 +823,7 @@ vpskit_install_trojan() {
     return 1
   }
 
-  candidate_config_path="$(mktemp)"
+  candidate_config_path="$(vpskit_trojan_candidate_xray_config_path)"
   printf '%s\n' "${rendered_config}" >"${candidate_config_path}"
   if ! vpskit_trojan_validate_candidate_xray_config "${xray_bin}" "${candidate_config_path}"; then
     rm -f "${candidate_config_path}"

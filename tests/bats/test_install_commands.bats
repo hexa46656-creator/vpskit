@@ -5,6 +5,8 @@ setup() {
   load "helpers/test_helper.bash"
   reset_vpskit_test_env
   export CLI_PATH="${PROJECT_ROOT}/vpskit/cli/vpskit.sh"
+  # shellcheck disable=SC1091
+  source "${PROJECT_ROOT}/vpskit/install/trojan.sh"
 }
 
 @test "install command lists supported targets in help" {
@@ -231,6 +233,15 @@ PY
   [ -r "${VPSKIT_TEST_ROOT_DIR}/etc/vpskit/trojan/server.crt" ]
 }
 
+@test "trojan candidate xray config path ends with json suffix" {
+  local candidate_config_path
+
+  candidate_config_path="$(vpskit_trojan_candidate_xray_config_path)"
+
+  [[ "${candidate_config_path}" == *.json ]]
+  rm -f "${candidate_config_path}"
+}
+
 @test "install trojan validates candidate config before live replacement" {
   prepare_trojan_env
   export VPSKIT_TEST_XRAY_LOG="${BATS_TEST_TMPDIR}/xray.log"
@@ -258,6 +269,15 @@ if [ -z "${config_path}" ]; then
   exit 1
 fi
 
+case "${config_path}" in
+  *.json)
+    ;;
+  *)
+    printf 'NON_JSON_CANDIDATE_PATH=%s\n' "${config_path}" >>"${log_file}"
+    exit 4
+    ;;
+esac
+
 if grep -q '"protocol": "trojan"' "${live_config}"; then
   printf 'LIVE_CONFIG_REPLACED_EARLY\n' >>"${log_file}"
   exit 3
@@ -278,7 +298,51 @@ EOF
   [[ "$output" == *"TROJAN_INSTALL=pass"* ]]
   [[ "$output" != *"LIVE_CONFIG_REPLACED_EARLY"* ]]
   [[ "$output" != *"LIVE_CONFIG_USED_FOR_VALIDATION"* ]]
+  [[ "$(cat "${VPSKIT_TEST_XRAY_LOG}")" == *"run -test -config"*".json"* ]]
   [[ "$(cat "${VPSKIT_TEST_XRAY_LOG}")" == *"run -test -config"* ]]
+}
+
+@test "vpskit trojan validation fails for genuinely invalid candidate config" {
+  prepare_trojan_env
+  export VPSKIT_TEST_XRAY_BIN="${BATS_TEST_TMPDIR}/xray-json-validate"
+  cat >"${VPSKIT_TEST_XRAY_BIN}" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+config_path=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -config)
+      shift
+      config_path="${1:-}"
+      ;;
+  esac
+  shift || true
+done
+
+if [ -z "${config_path}" ]; then
+  exit 1
+fi
+
+python3 - "${config_path}" <<'PY'
+from pathlib import Path
+import json
+import sys
+
+path = Path(sys.argv[1])
+json.loads(path.read_text(encoding="utf-8"))
+PY
+EOF
+  chmod +x "${VPSKIT_TEST_XRAY_BIN}"
+
+  local invalid_candidate
+  invalid_candidate="${BATS_TEST_TMPDIR}/invalid-candidate.json"
+  printf '{not valid json\n' >"${invalid_candidate}"
+
+  run vpskit_trojan_validate_candidate_xray_config "${VPSKIT_TEST_XRAY_BIN}" "${invalid_candidate}"
+
+  [ "$status" -eq 1 ]
 }
 
 @test "install trojan rolls back old config when post-restart validation fails" {
