@@ -37,3 +37,15 @@ vpskit_is_dry_run() {
       ;;
   esac
 }
+
+vpskit_dry_run_log() {
+  local message="$*"
+  local output_path="${VPSKIT_DRY_RUN_MUTATION_FILE:-}"
+
+  if [ -z "${output_path}" ]; then
+    output_path="${TMPDIR:-/tmp}/vpskit-dry-run.log"
+  fi
+
+  mkdir -p "$(dirname "${output_path}")"
+  printf '%s\n' "${message}" >>"${output_path}"
+}

@@ -11,6 +11,7 @@ load_core() {
 
 reset_vpskit_test_env() {
   unset VPSKIT_DRY_RUN
+  unset VPSKIT_DRY_RUN_MUTATION_FILE
   unset VPSKIT_TEST_EUID
   unset VPSKIT_TEST_OS_ID
   unset VPSKIT_TEST_OS_VERSION_ID
@@ -25,5 +26,9 @@ reset_vpskit_test_env() {
   unset VPSKIT_TEST_UFW_STATUS
   unset VPSKIT_TEST_SSHD_CONFIG_PATH
   unset VPSKIT_LOCK_PATH
+  unset VPSKIT_LOCK_METADATA_PATH
+  unset VPSKIT_LOCK_FD
   unset VPSKIT_ROLLBACK_STACK
+  unset VPSKIT_TRANSACTION_ACTIVE
+  unset VPSKIT_SAFETY_ENABLE_TRAPS
 }
