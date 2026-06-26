@@ -30,6 +30,15 @@ source "${VPSKIT_ROOT}/network/tcp_probe.sh"
 # shellcheck source=../network/fallback_report.sh
 source "${VPSKIT_ROOT}/network/fallback_report.sh"
 # shellcheck disable=SC1091
+# shellcheck source=../network/reality_doctor.sh
+source "${VPSKIT_ROOT}/network/reality_doctor.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../network/trojan_doctor.sh
+source "${VPSKIT_ROOT}/network/trojan_doctor.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../network/hysteria2_doctor.sh
+source "${VPSKIT_ROOT}/network/hysteria2_doctor.sh"
+# shellcheck disable=SC1091
 # shellcheck source=../subscription/shadowrocket_repair.sh
 source "${VPSKIT_ROOT}/subscription/shadowrocket_repair.sh"
 
@@ -71,6 +80,10 @@ vpskit_cli_doctor() {
   else
     printf 'SUBSCRIPTION_FILE=missing\n'
   fi
+
+  vpskit_reality_doctor
+  vpskit_trojan_doctor
+  vpskit_hysteria2_doctor
 }
 
 vpskit_cli_sub() {

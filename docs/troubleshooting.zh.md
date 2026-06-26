@@ -28,6 +28,32 @@
 - beta 版本不会自动重启服务。
 - 外部服务变化后，重新运行 `status` 和 `doctor`。
 
+
+## Reality、Trojan 和 Hysteria2 诊断
+
+- 如果 Reality 超时，而 Trojan 和 Hysteria2 仍然正常，优先检查 DNS / CDN 边缘结果是否一致。
+- Reality 对 SNI、dest、TLS 指纹和解析器一致性都很敏感。
+- 可以用下面命令对比不同解析器的结果：
+  - `dig www.microsoft.com @1.1.1.1`
+  - `dig www.microsoft.com @8.8.8.8`
+  - `dig www.microsoft.com`
+- 如果结果不同，不要选择变化很大的 CDN 目标，优先使用更稳定的 Reality 目标。
+- Trojan 在申请证书前，真实域名必须稳定解析到 VPS 公网 IP。
+- Hysteria2 UDP 问题需要检查云防火墙、安全组、VPS 提供商 UDP 过滤、MTU，以及自签证书场景下的 `insecure=true`。
+
+
+## Reality、Trojan 和 Hysteria2 诊断
+
+- 如果 Reality 超时，而 Trojan 和 Hysteria2 仍然正常，优先检查 DNS / CDN 边缘结果是否一致。
+- Reality 对 SNI、dest、TLS 指纹和解析器一致性都很敏感。
+- 可以用下面命令对比不同解析器的结果：
+  - `dig www.microsoft.com @1.1.1.1`
+  - `dig www.microsoft.com @8.8.8.8`
+  - `dig www.microsoft.com`
+- 如果结果不同，不要选择变化很大的 CDN 目标，优先使用更稳定的 Reality 目标。
+- Trojan 在申请证书前，真实域名必须稳定解析到 VPS 公网 IP。
+- Hysteria2 UDP 问题需要检查云防火墙、安全组、VPS 提供商 UDP 过滤、MTU，以及自签证书场景下的 `insecure=true`。
+
 ## vpskit doctor
 
 `doctor` 用于只读诊断。
