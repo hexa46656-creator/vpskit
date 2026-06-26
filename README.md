@@ -2,11 +2,12 @@
 
 VPSKit is a practical VPS deployment and repair toolkit.
 
-Phase 1 includes:
+Current beta capability: `v0.3.0-beta` supports:
 
 - VPS hardening for Ubuntu 24.04 LTS
 - Xray VLESS Reality over TCP 443 with `xtls-rprx-vision`
 - subscription output for Shadowrocket/v2rayNG
+- post-install verification commands for managed SSH user and VLESS Reality state
 
 Quick start:
 
@@ -25,6 +26,8 @@ CLI commands:
 - `fix`
 - `install hardening`
 - `install vless-reality`
+- `verify ssh-user`
+- `verify vless-reality`
 
 Phase 1 install examples:
 
@@ -32,6 +35,14 @@ Phase 1 install examples:
 sudo VPSKIT_AUTHORIZED_KEY_FILE="$HOME/.ssh/id_ed25519.pub" bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install vless-reality
+bash vpskit/cli/vpskit.sh sub show
+```
+
+After install verification:
+
+```bash
+bash vpskit/cli/vpskit.sh verify ssh-user
+bash vpskit/cli/vpskit.sh verify vless-reality
 bash vpskit/cli/vpskit.sh sub show
 ```
 
@@ -90,6 +101,8 @@ Commercial delivery:
 
 Release notes:
 
+- See [release/v0.3.0-beta-notes.md](release/v0.3.0-beta-notes.md)
+- See [release/v0.3.0-beta-test-report.md](release/v0.3.0-beta-test-report.md)
 - See [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - See [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
 
@@ -97,11 +110,12 @@ Release notes:
 
 VPSKit 是一个实用的 VPS 部署与修复工具包。
 
-Phase 1 包含：
+当前 beta 能力：`v0.3.0-beta` 支持：
 
 - Ubuntu 24.04 LTS VPS 安全加固
 - 基于 TCP 443 和 `xtls-rprx-vision` 的 Xray VLESS Reality
 - Shadowrocket/v2rayNG 订阅输出
+- 用于受管理 SSH 用户和 VLESS Reality 状态的安装后验证命令
 
 快速开始：
 
@@ -120,6 +134,8 @@ CLI 命令：
 - `fix`
 - `install hardening`
 - `install vless-reality`
+- `verify ssh-user`
+- `verify vless-reality`
 
 Phase 1 安装示例：
 
@@ -127,6 +143,14 @@ Phase 1 安装示例：
 sudo VPSKIT_AUTHORIZED_KEY_FILE="$HOME/.ssh/id_ed25519.pub" bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install vless-reality
+bash vpskit/cli/vpskit.sh sub show
+```
+
+安装后验证：
+
+```bash
+bash vpskit/cli/vpskit.sh verify ssh-user
+bash vpskit/cli/vpskit.sh verify vless-reality
 bash vpskit/cli/vpskit.sh sub show
 ```
 
@@ -185,5 +209,7 @@ Shadowrocket 使用：
 
 发布说明：
 
+- 参见 [release/v0.3.0-beta-notes.md](release/v0.3.0-beta-notes.md)
+- 参见 [release/v0.3.0-beta-test-report.md](release/v0.3.0-beta-test-report.md)
 - 参见 [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - 参见 [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)

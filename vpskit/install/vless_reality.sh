@@ -154,6 +154,48 @@ vpskit_vless_configure_ufw() {
   esac
 }
 
+vpskit_vless_ufw_443_summary() {
+  local port="$1"
+  local ufw_status
+
+  ufw_status="$(vpskit_vless_ufw_status)"
+
+  if ! vpskit_ufw_available && [ -z "${ufw_status}" ]; then
+    printf 'unavailable\n'
+    return 0
+  fi
+
+  if printf '%s\n' "${ufw_status}" | grep -qi 'inactive'; then
+    printf 'inactive\n'
+    return 0
+  fi
+
+  if printf '%s\n' "${ufw_status}" | grep -qi 'active'; then
+    if printf '%s\n' "${ufw_status}" | grep -Eiq "(^|[[:space:]])${port}/tcp[[:space:]].*ALLOW"; then
+      printf 'allow\n'
+    else
+      printf 'active_rule_unverified\n'
+    fi
+    return 0
+  fi
+
+  printf 'unknown\n'
+}
+
+vpskit_vless_xray_service_summary() {
+  if ! vpskit_systemd_available; then
+    printf 'systemd_unavailable\n'
+    return 0
+  fi
+
+  if vpskit_service_active xray || vpskit_service_active xray.service; then
+    printf 'active\n'
+    return 0
+  fi
+
+  printf 'inactive\n'
+}
+
 vpskit_install_or_prepare_xray() {
   local installer_url="https://github.com/XTLS/Xray-install/raw/main/install-release.sh"
   local tmp_installer=""
@@ -444,6 +486,10 @@ vpskit_install_vless_reality() {
   fi
 
   vpskit_transaction_commit
+  printf 'XRAY_SERVICE=%s\n' "$(vpskit_vless_xray_service_summary)"
+  printf 'TCP_PORT=%s\n' "${port}"
+  printf 'UFW_443_TCP=%s\n' "$(vpskit_vless_ufw_443_summary "${port}")"
   printf 'VLESS_REALITY_URI=%s\n' "${uri}"
   printf 'SUBSCRIPTION_FILE=%s\n' "$(vpskit_vless_subscription_file)"
+  printf 'CLIENT_URI=%s\n' "${uri}"
 }

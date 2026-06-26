@@ -157,6 +157,8 @@ prepare_hardening_env() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"Open a second terminal and verify: ssh -i <matching-private-key> -p 2022 alex@203.0.113.10"* ]]
+  [[ "$output" == *"ROOT_SSH_SESSION=keep_open_until_second_terminal_verified"* ]]
+  [[ "$output" == *"DO_NOT_CLOSE_ROOT_SSH=before_alex_login_verified"* ]]
 }
 
 @test "hardening allows SSH before enabling UFW" {

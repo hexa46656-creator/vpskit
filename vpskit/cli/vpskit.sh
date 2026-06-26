@@ -47,17 +47,20 @@ source "${VPSKIT_ROOT}/network/hysteria2_doctor.sh"
 # shellcheck disable=SC1091
 # shellcheck source=../subscription/shadowrocket_repair.sh
 source "${VPSKIT_ROOT}/subscription/shadowrocket_repair.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../verify/checks.sh
+source "${VPSKIT_ROOT}/verify/checks.sh"
 
 vpskit_cli_version() {
   cat <<'EOF'
-VPSKit v2.0.0-beta
-Available commands: version, status, doctor, sub, fix, install
+VPSKit v0.3.1-beta
+Available commands: version, status, doctor, sub, fix, install, verify
 Available components: CLI, hardening installer, VLESS Reality installer, DNS health, TCP probe, fallback report, Shadowrocket repair
 EOF
 }
 
 vpskit_cli_status() {
-  printf 'VERSION=VPSKit v2.0.0-beta\n'
+  printf 'VERSION=VPSKit v0.3.1-beta\n'
   vpskit_system_inspection_summary
   printf 'CLI=available\n'
   printf 'SUBSCRIPTION_REPAIR=available\n'
@@ -192,6 +195,30 @@ EOF
   esac
 }
 
+vpskit_cli_verify() {
+  local target="${1:-}"
+
+  case "${target}" in
+    ssh-user)
+      vpskit_verify_ssh_user
+      ;;
+    vless-reality)
+      vpskit_verify_vless_reality
+      ;;
+    "" | help | --help | -h)
+      cat <<'EOF'
+Usage:
+  vpskit verify ssh-user
+  vpskit verify vless-reality
+EOF
+      ;;
+    *)
+      vpskit_die "unknown verify target: ${target}"
+      return 1
+      ;;
+  esac
+}
+
 vpskit_cli_usage() {
   cat <<'EOF'
 Usage:
@@ -203,6 +230,8 @@ Usage:
   vpskit fix
   vpskit install hardening
   vpskit install vless-reality
+  vpskit verify ssh-user
+  vpskit verify vless-reality
 EOF
 }
 
@@ -228,6 +257,9 @@ main() {
       ;;
     install)
       vpskit_cli_install "$@"
+      ;;
+    verify)
+      vpskit_cli_verify "$@"
       ;;
     "" | help | --help | -h)
       vpskit_cli_usage
