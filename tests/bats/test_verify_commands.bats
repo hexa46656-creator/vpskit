@@ -31,7 +31,7 @@ prepare_verify_vless_rootfs() {
   export VPSKIT_TEST_SERVICE_ACTIVE="xray xray.service"
   export VPSKIT_TEST_TCP_443_OWNER=xray
   export VPSKIT_TEST_UFW_AVAILABLE=yes
-  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n443/tcp ALLOW Anywhere'
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n443/tcp ALLOW IN Anywhere'
 }
 
 @test "verify help lists read-only verification targets" {
@@ -83,7 +83,40 @@ prepare_verify_vless_rootfs() {
   [[ "$output" == *"XRAY_SERVICE=pass state=active"* ]]
   [[ "$output" == *"TCP_443_LISTENER=pass service=xray"* ]]
   [[ "$output" == *"SUBSCRIPTION_FILE=pass"* ]]
-  [[ "$output" == *"UFW_443_TCP=pass status=allow"* ]]
+  [[ "$output" == *"UFW_443_TCP=pass status=active rule=present"* ]]
+  [[ "$output" == *"VERIFY_VLESS_REALITY=pass"* ]]
+}
+
+@test "verify vless-reality does not treat v6-only UFW 443 as IPv4 pass" {
+  prepare_verify_vless_rootfs
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n443/tcp (v6) ALLOW IN Anywhere (v6)'
+
+  run bash "${CLI_PATH}" verify vless-reality
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"UFW_443_TCP=fail status=active rule=missing"* ]]
+  [[ "$output" == *"VERIFY_VLESS_REALITY=fail"* ]]
+}
+
+@test "verify vless-reality fails when active UFW is missing tcp 443" {
+  prepare_verify_vless_rootfs
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n22/tcp ALLOW IN Anywhere'
+
+  run bash "${CLI_PATH}" verify vless-reality
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"UFW_443_TCP=fail status=active rule=missing"* ]]
+  [[ "$output" == *"VERIFY_VLESS_REALITY=fail"* ]]
+}
+
+@test "verify vless-reality skips inactive UFW without failing whole verify" {
+  prepare_verify_vless_rootfs
+  export VPSKIT_TEST_UFW_STATUS="Status: inactive"
+
+  run bash "${CLI_PATH}" verify vless-reality
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"UFW_443_TCP=skip status=inactive reason=not_enforced"* ]]
   [[ "$output" == *"VERIFY_VLESS_REALITY=pass"* ]]
 }
 

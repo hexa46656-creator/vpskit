@@ -177,9 +177,36 @@ vpskit_verify_ufw_allows_443_tcp() {
   local ufw_status="$1"
 
   printf '%s\n' "${ufw_status}" | awk '
-    /443\/tcp/ && /ALLOW/ { found = 1 }
+    {
+      line = $0
+      sub(/^[[:space:]]*\[[[:space:]]*[0-9]+\][[:space:]]*/, "", line)
+      if (line ~ /\(v6\)/) {
+        next
+      }
+
+      field_count = split(line, fields, /[[:space:]]+/)
+      if (fields[1] != "443/tcp") {
+        next
+      }
+
+      for (i = 2; i <= field_count; i++) {
+        if (fields[i] == "ALLOW") {
+          found = 1
+        }
+      }
+    }
     END { exit !found }
   '
+}
+
+vpskit_verify_ufw_status() {
+  if [ -n "${VPSKIT_TEST_UFW_STATUS:-}" ]; then
+    vpskit_ufw_status
+    return 0
+  fi
+
+  vpskit_ufw_available || return 1
+  ufw status verbose 2>/dev/null || ufw status numbered 2>/dev/null || ufw status 2>/dev/null
 }
 
 vpskit_verify_vless_reality() {
@@ -223,14 +250,14 @@ vpskit_verify_vless_reality() {
     status=1
   fi
 
-  ufw_status="$(vpskit_ufw_status 2>/dev/null || true)"
+  ufw_status="$(vpskit_verify_ufw_status 2>/dev/null || true)"
   if ! vpskit_ufw_available && [ -z "${ufw_status}" ]; then
     vpskit_verify_emit_check UFW_443_TCP skip "reason=ufw_unavailable"
   elif printf '%s\n' "${ufw_status}" | grep -qi 'inactive'; then
-    vpskit_verify_emit_check UFW_443_TCP skip "status=inactive"
+    vpskit_verify_emit_check UFW_443_TCP skip "status=inactive reason=not_enforced"
   elif printf '%s\n' "${ufw_status}" | grep -qi 'active'; then
     if vpskit_verify_ufw_allows_443_tcp "${ufw_status}"; then
-      vpskit_verify_emit_check UFW_443_TCP pass "status=allow"
+      vpskit_verify_emit_check UFW_443_TCP pass "status=active rule=present"
     else
       vpskit_verify_emit_check UFW_443_TCP fail "status=active rule=missing"
       status=1
