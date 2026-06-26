@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 vpskit_subscription_supported_formats() {
-  printf 'SUPPORTED_SUB_FORMATS=raw,base64,shadowrocket,v2rayng,clash-meta,sing-box\n'
+  printf 'SUPPORTED_SUB_FORMATS=raw,base64,shadowrocket,v2rayng,clash-meta,sing-box,hysteria2\n'
 }
 
 vpskit_subscription_resolve_file() {
@@ -102,4 +102,18 @@ vpskit_subscription_write_output_file() {
 
   printf 'SUB_EXPORT=pass format=%s output=%s\n' "${format}" "${output_path}"
   return 0
+}
+
+vpskit_hysteria2_subscription_export() {
+  local subscription_file
+  local rendered
+
+  subscription_file="$(vpskit_hysteria2_subscription_file)"
+  if [ ! -f "${subscription_file}" ]; then
+    printf 'SUB_EXPORT=fail format=hysteria2 reason=missing_subscription_file\n'
+    return 1
+  fi
+
+  rendered="$(<"${subscription_file}")"
+  printf '%s\n' "${rendered}"
 }

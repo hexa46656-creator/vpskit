@@ -21,6 +21,17 @@ prepare_subscription_file_with_uri() {
   printf '%s\n' "${uri}" >"${VPSKIT_SUBSCRIPTION_FILE}"
 }
 
+prepare_hysteria2_subscription_file() {
+  export VPSKIT_HYSTERIA2_SUBSCRIPTION_FILE="${BATS_TEST_TMPDIR}/hysteria2.yaml"
+  cat >"${VPSKIT_HYSTERIA2_SUBSCRIPTION_FILE}" <<'EOF'
+server: 203.0.113.10:443
+auth: test-password
+tls:
+  sni: 203.0.113.10
+  pinSHA256: test-pin
+EOF
+}
+
 test_subscription_uri="vless://11111111-1111-4111-8111-111111111111@154.26.184.229:443?encryption=none&security=reality&sni=www.cloudflare.com&fp=chrome&pbk=public-test-key&sid=abcdef1234567890&type=tcp&flow=xtls-rprx-vision#VPSKit-Reality"
 
 assert_file_ends_with_single_newline() {
@@ -42,6 +53,7 @@ PY
   [[ "$output" == *"vpskit sub formats"* ]]
   [[ "$output" == *"vpskit sub export <format>"* ]]
   [[ "$output" == *"vpskit sub export <format> --output <path>"* ]]
+  [[ "$output" == *"vpskit sub export hysteria2"* ]]
   [[ "$output" == *"vpskit sub validate"* ]]
 }
 
@@ -49,7 +61,7 @@ PY
   run bash "${CLI_PATH}" sub formats
 
   [ "$status" -eq 0 ]
-  [ "$output" = "SUPPORTED_SUB_FORMATS=raw,base64,shadowrocket,v2rayng,clash-meta,sing-box" ]
+  [ "$output" = "SUPPORTED_SUB_FORMATS=raw,base64,shadowrocket,v2rayng,clash-meta,sing-box,hysteria2" ]
 }
 
 @test "sub export raw returns the stored uri" {
@@ -318,6 +330,60 @@ PY
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"malformed VLESS Reality URI"* ]]
+}
+
+@test "sub export hysteria2 returns the stored yaml config" {
+  prepare_hysteria2_subscription_file
+
+  run bash "${CLI_PATH}" sub export hysteria2
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(cat "${VPSKIT_HYSTERIA2_SUBSCRIPTION_FILE}")" ]
+  [[ "$output" == *"server: 203.0.113.10:443"* ]]
+  [[ "$output" == *"auth: test-password"* ]]
+  [[ "$output" == *"pinSHA256: test-pin"* ]]
+}
+
+@test "sub export hysteria2 --output writes file and prints status only" {
+  prepare_hysteria2_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/hysteria2.yaml.out"
+
+  run bash "${CLI_PATH}" sub export hysteria2 --output "${output_file}"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUB_EXPORT=pass format=hysteria2 output=${output_file}" ]
+  cmp -s "${output_file}" "${VPSKIT_HYSTERIA2_SUBSCRIPTION_FILE}"
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
+@test "sub export hysteria2 -o alias works" {
+  prepare_hysteria2_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/hysteria2-alias.yaml"
+
+  run bash "${CLI_PATH}" sub export hysteria2 -o "${output_file}"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUB_EXPORT=pass format=hysteria2 output=${output_file}" ]
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
+@test "sub export hysteria2 stdout ends with exactly one newline" {
+  prepare_hysteria2_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/hysteria2-stdout.yaml"
+
+  run bash -c 'bash "$1" sub export hysteria2 >"$2"' _ "${CLI_PATH}" "${output_file}"
+
+  [ "$status" -eq 0 ]
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
+@test "sub export hysteria2 fails clearly when the subscription file is missing" {
+  export VPSKIT_HYSTERIA2_SUBSCRIPTION_FILE="${BATS_TEST_TMPDIR}/missing-hysteria2.yaml"
+
+  run bash "${CLI_PATH}" sub export hysteria2
+
+  [ "$status" -eq 1 ]
+  [ "$output" = "SUB_EXPORT=fail format=hysteria2 reason=missing_subscription_file" ]
 }
 
 @test "sub validate passes with valid vless reality uri" {

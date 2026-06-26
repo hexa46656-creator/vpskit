@@ -38,6 +38,17 @@ vpskit_is_dry_run() {
   esac
 }
 
+vpskit_is_test_mode() {
+  case "${VPSKIT_TEST_MODE:-}" in
+    1 | true | TRUE | yes | YES | on | ON)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 vpskit_dry_run_log() {
   local message="$*"
   local output_path="${VPSKIT_DRY_RUN_MUTATION_FILE:-}"

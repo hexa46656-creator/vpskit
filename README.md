@@ -2,13 +2,14 @@
 
 VPSKit is a practical VPS deployment and repair toolkit.
 
-Current beta capability: `v0.4.1-beta` supports:
+Current beta capability: `v0.5.0-beta` supports:
 
 - VPS hardening for Ubuntu 24.04 LTS
 - Xray VLESS Reality over TCP 443 with `xtls-rprx-vision`
+- Hysteria2 over UDP 443 with self-signed TLS and no domain requirement
 - subscription export for Shadowrocket, v2rayNG, Clash Meta, sing-box, and base64 subscription bundles
 - client export to file for existing VLESS Reality subscriptions
-- post-install verification commands for managed SSH user and VLESS Reality state
+- post-install verification commands for managed SSH user, VLESS Reality state, and Hysteria2 state
 
 Quick start:
 
@@ -28,12 +29,15 @@ CLI commands:
 - `sub export <format>`
 - `sub export <format> --output <path>`
 - `sub export <format> -o <path>`
+- `sub export hysteria2`
 - `sub validate`
 - `fix`
 - `install hardening`
 - `install vless-reality`
+- `install hysteria2`
 - `verify ssh-user`
 - `verify vless-reality`
+- `verify hysteria2`
 
 Phase 1 install examples:
 
@@ -41,6 +45,7 @@ Phase 1 install examples:
 sudo VPSKIT_AUTHORIZED_KEY_FILE="$HOME/.ssh/id_ed25519.pub" bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install vless-reality
+sudo bash vpskit/cli/vpskit.sh install hysteria2
 bash vpskit/cli/vpskit.sh sub show
 ```
 
@@ -49,6 +54,7 @@ After install verification:
 ```bash
 bash vpskit/cli/vpskit.sh verify ssh-user
 bash vpskit/cli/vpskit.sh verify vless-reality
+bash vpskit/cli/vpskit.sh verify hysteria2
 bash vpskit/cli/vpskit.sh sub show
 ```
 
@@ -61,7 +67,6 @@ Managed user SSH key:
 
 Not included yet:
 
-- Hysteria2 installer
 - Trojan installer
 - SaaS control plane
 - Telegram Bot
@@ -81,6 +86,7 @@ Client export:
 - Clash Meta: `bash vpskit/cli/vpskit.sh sub export clash-meta`
 - sing-box: `bash vpskit/cli/vpskit.sh sub export sing-box`
 - Base64 generic subscription: `bash vpskit/cli/vpskit.sh sub export base64`
+- Hysteria2: `bash vpskit/cli/vpskit.sh sub export hysteria2`
 
 Client export to file:
 
@@ -95,11 +101,19 @@ Examples:
 ```bash
 bash vpskit/cli/vpskit.sh sub export clash-meta --output /tmp/vpskit-clash.yaml
 bash vpskit/cli/vpskit.sh sub export sing-box --output /tmp/vpskit-sing-box.json
+bash vpskit/cli/vpskit.sh sub export hysteria2 --output /tmp/vpskit-hysteria2.yaml
 bash vpskit/cli/vpskit.sh sub validate
 ```
 
-`v0.4.1-beta` only improves client export UX for the existing VLESS Reality subscription.
-It does not add Hysteria2, Trojan, QR code generation, SaaS, Telegram Bot, PayPal, or Web UI.
+Hysteria2:
+
+- Uses UDP 443 and can coexist with VLESS Reality on TCP 443.
+- The installer writes the server config to `/etc/hysteria/config.yaml`.
+- The installer stores the client subscription YAML at `/var/lib/vpskit/hysteria2.yaml`.
+- `sub export hysteria2` prints the client YAML, and `--output` saves it to a file.
+
+`v0.5.0-beta` adds Hysteria2 only.
+It does not add Trojan, QR code generation, SaaS, Telegram Bot, PayPal, or Web UI.
 
 Troubleshooting:
 
@@ -138,6 +152,7 @@ Release notes:
 - See [release/v0.3.0-beta-test-report.md](release/v0.3.0-beta-test-report.md)
 - See [release/v0.4.0-beta-notes.md](release/v0.4.0-beta-notes.md)
 - See [release/v0.4.1-beta-notes.md](release/v0.4.1-beta-notes.md)
+- See [release/v0.5.0-beta-notes.md](release/v0.5.0-beta-notes.md)
 - See [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - See [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
 
@@ -145,13 +160,14 @@ Release notes:
 
 VPSKit 是一个实用的 VPS 部署与修复工具包。
 
-当前 beta 能力：`v0.4.1-beta` 支持：
+当前 beta 能力：`v0.5.0-beta` 支持：
 
 - Ubuntu 24.04 LTS VPS 安全加固
 - 基于 TCP 443 和 `xtls-rprx-vision` 的 Xray VLESS Reality
+- 基于 UDP 443、使用自签名 TLS 且无需域名的 Hysteria2
 - Shadowrocket、v2rayNG、Clash Meta、sing-box 和 base64 订阅导出
 - 现有 VLESS Reality 订阅的文件导出体验优化
-- 用于受管理 SSH 用户和 VLESS Reality 状态的安装后验证命令
+- 用于受管理 SSH 用户、VLESS Reality 状态和 Hysteria2 状态的安装后验证命令
 
 快速开始：
 
@@ -171,12 +187,15 @@ CLI 命令：
 - `sub export <format>`
 - `sub export <format> --output <path>`
 - `sub export <format> -o <path>`
+- `sub export hysteria2`
 - `sub validate`
 - `fix`
 - `install hardening`
 - `install vless-reality`
+- `install hysteria2`
 - `verify ssh-user`
 - `verify vless-reality`
+- `verify hysteria2`
 
 Phase 1 安装示例：
 
@@ -184,6 +203,7 @@ Phase 1 安装示例：
 sudo VPSKIT_AUTHORIZED_KEY_FILE="$HOME/.ssh/id_ed25519.pub" bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install hardening
 sudo bash vpskit/cli/vpskit.sh install vless-reality
+sudo bash vpskit/cli/vpskit.sh install hysteria2
 bash vpskit/cli/vpskit.sh sub show
 ```
 
@@ -192,6 +212,7 @@ bash vpskit/cli/vpskit.sh sub show
 ```bash
 bash vpskit/cli/vpskit.sh verify ssh-user
 bash vpskit/cli/vpskit.sh verify vless-reality
+bash vpskit/cli/vpskit.sh verify hysteria2
 bash vpskit/cli/vpskit.sh sub show
 ```
 
@@ -204,7 +225,6 @@ bash vpskit/cli/vpskit.sh sub show
 
 尚未包含：
 
-- Hysteria2 安装器
 - Trojan 安装器
 - SaaS 控制台
 - Telegram Bot
@@ -224,6 +244,7 @@ Shadowrocket 使用：
 - Clash Meta：`bash vpskit/cli/vpskit.sh sub export clash-meta`
 - sing-box：`bash vpskit/cli/vpskit.sh sub export sing-box`
 - 通用 base64 订阅：`bash vpskit/cli/vpskit.sh sub export base64`
+- Hysteria2：`bash vpskit/cli/vpskit.sh sub export hysteria2`
 
 文件导出体验：
 
@@ -238,11 +259,19 @@ Shadowrocket 使用：
 ```bash
 bash vpskit/cli/vpskit.sh sub export clash-meta --output /tmp/vpskit-clash.yaml
 bash vpskit/cli/vpskit.sh sub export sing-box --output /tmp/vpskit-sing-box.json
+bash vpskit/cli/vpskit.sh sub export hysteria2 --output /tmp/vpskit-hysteria2.yaml
 bash vpskit/cli/vpskit.sh sub validate
 ```
 
-`v0.4.1-beta` 只改进现有 VLESS Reality 订阅的客户端导出体验。
-它不会新增 Hysteria2、Trojan、二维码生成、SaaS、Telegram Bot、PayPal 或 Web UI。
+Hysteria2：
+
+- 使用 UDP 443，并且可以与 TCP 443 上的 VLESS Reality 共存。
+- 安装器会把服务端配置写到 `/etc/hysteria/config.yaml`。
+- 安装器会把客户端订阅 YAML 保存到 `/var/lib/vpskit/hysteria2.yaml`。
+- `sub export hysteria2` 会输出客户端 YAML，`--output` 会写入文件。
+
+`v0.5.0-beta` 只新增 Hysteria2。
+它不会新增 Trojan、二维码生成、SaaS、Telegram Bot、PayPal 或 Web UI。
 
 故障排查：
 
@@ -281,5 +310,6 @@ bash vpskit/cli/vpskit.sh sub validate
 - 参见 [release/v0.3.0-beta-test-report.md](release/v0.3.0-beta-test-report.md)
 - 参见 [release/v0.4.0-beta-notes.md](release/v0.4.0-beta-notes.md)
 - 参见 [release/v0.4.1-beta-notes.md](release/v0.4.1-beta-notes.md)
+- 参见 [release/v0.5.0-beta-notes.md](release/v0.5.0-beta-notes.md)
 - 参见 [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - 参见 [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
