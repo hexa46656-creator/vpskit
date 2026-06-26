@@ -1,5 +1,22 @@
 #!/usr/bin/env bash
 
+VPSKIT_VERIFY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+# shellcheck source=../core/common.sh
+source "${VPSKIT_VERIFY_DIR}/../core/common.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../core/system_check.sh
+source "${VPSKIT_VERIFY_DIR}/../core/system_check.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../install/vless_reality.sh
+source "${VPSKIT_VERIFY_DIR}/../install/vless_reality.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../install/hysteria2.sh
+source "${VPSKIT_VERIFY_DIR}/../install/hysteria2.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../install/trojan.sh
+source "${VPSKIT_VERIFY_DIR}/../install/trojan.sh"
+
 vpskit_verify_managed_user_exists() {
   local managed_user="$1"
 
@@ -225,6 +242,32 @@ vpskit_verify_ufw_allows_443_udp() {
   '
 }
 
+vpskit_verify_ufw_allows_8443_tcp() {
+  local ufw_status="$1"
+
+  printf '%s\n' "${ufw_status}" | awk '
+    {
+      line = $0
+      sub(/^[[:space:]]*\[[[:space:]]*[0-9]+[[:space:]]*\][[:space:]]*/, "", line)
+      if (line ~ /\(v6\)/) {
+        next
+      }
+
+      field_count = split(line, fields, /[[:space:]]+/)
+      if (fields[1] != "8443/tcp") {
+        next
+      }
+
+      for (i = 2; i <= field_count; i++) {
+        if (fields[i] == "ALLOW") {
+          found = 1
+        }
+      }
+    }
+    END { exit !found }
+  '
+}
+
 vpskit_verify_ufw_status() {
   if [ -n "${VPSKIT_TEST_UFW_STATUS:-}" ]; then
     vpskit_ufw_status
@@ -296,6 +339,145 @@ vpskit_verify_vless_reality() {
     printf 'VERIFY_VLESS_REALITY=pass\n'
   else
     printf 'VERIFY_VLESS_REALITY=fail\n'
+  fi
+
+  return "${status}"
+}
+
+vpskit_verify_trojan_binary() {
+  local bin_path
+
+  if bin_path="$(vpskit_vless_xray_bin 2>/dev/null)" && [ -x "${bin_path}" ]; then
+    vpskit_verify_emit_check TROJAN_BINARY pass "path=${bin_path}"
+    return 0
+  fi
+
+  vpskit_verify_emit_check TROJAN_BINARY fail "path=missing"
+  return 1
+}
+
+vpskit_verify_trojan_config() {
+  if [ "$(vpskit_trojan_xray_config_state)" = "present" ]; then
+    vpskit_verify_emit_check TROJAN_CONFIG pass
+    return 0
+  fi
+
+  vpskit_verify_emit_check TROJAN_CONFIG fail
+  return 1
+}
+
+vpskit_verify_trojan_subscription_file() {
+  local subscription_file
+
+  subscription_file="$(vpskit_system_path "$(vpskit_trojan_subscription_file)")"
+  if [ -s "${subscription_file}" ]; then
+    vpskit_verify_emit_check TROJAN_SUBSCRIPTION_FILE pass "path=${subscription_file}"
+    return 0
+  fi
+
+  vpskit_verify_emit_check TROJAN_SUBSCRIPTION_FILE fail "path=${subscription_file}"
+  return 1
+}
+
+vpskit_verify_trojan_service() {
+  if ! vpskit_systemd_available; then
+    vpskit_verify_emit_check TROJAN_SERVICE fail "state=unknown service=xray"
+    return 1
+  fi
+
+  if vpskit_service_active "$(vpskit_trojan_service_name)" || vpskit_service_active "$(vpskit_trojan_service_name).service"; then
+    vpskit_verify_emit_check TROJAN_SERVICE pass "state=active service=xray"
+    return 0
+  fi
+
+  if vpskit_service_exists "$(vpskit_trojan_service_name)" || vpskit_service_exists "$(vpskit_trojan_service_name).service"; then
+    vpskit_verify_emit_check TROJAN_SERVICE fail "state=inactive"
+  else
+    vpskit_verify_emit_check TROJAN_SERVICE fail "state=missing"
+  fi
+  return 1
+}
+
+vpskit_verify_trojan_listener() {
+  local owner
+
+  owner="$(vpskit_trojan_tcp_8443_owner)"
+  case "${owner}" in
+    xray)
+      vpskit_verify_emit_check TCP_8443_LISTENER pass "service=xray"
+      return 0
+      ;;
+    not_bound)
+      vpskit_verify_emit_check TCP_8443_LISTENER fail "expected=xray actual=not_bound"
+      return 1
+      ;;
+    unknown)
+      vpskit_verify_emit_check TCP_8443_LISTENER fail "expected=xray actual=unknown"
+      return 1
+      ;;
+    *)
+      vpskit_verify_emit_check TCP_8443_LISTENER fail "expected=xray actual=${owner:-none}"
+      return 1
+      ;;
+  esac
+}
+
+vpskit_verify_trojan_ufw() {
+  local ufw_status
+
+  ufw_status="$(vpskit_trojan_ufw_status 2>/dev/null || true)"
+  if ! vpskit_ufw_available && [ -z "${ufw_status}" ]; then
+    vpskit_verify_emit_check UFW_8443_TCP skip "reason=ufw_unavailable"
+    return 0
+  fi
+
+  if printf '%s\n' "${ufw_status}" | grep -qi 'inactive'; then
+    vpskit_verify_emit_check UFW_8443_TCP skip "status=inactive reason=not_enforced"
+    return 0
+  fi
+
+  if printf '%s\n' "${ufw_status}" | grep -qi 'active'; then
+    if vpskit_verify_ufw_allows_8443_tcp "${ufw_status}"; then
+      vpskit_verify_emit_check UFW_8443_TCP pass "status=active rule=present"
+      return 0
+    fi
+
+    vpskit_verify_emit_check UFW_8443_TCP fail "status=active rule=missing"
+    return 1
+  fi
+
+  vpskit_verify_emit_check UFW_8443_TCP skip "status=unknown"
+  return 0
+}
+
+vpskit_verify_trojan_vless_preserved() {
+  local tcp_owner
+
+  tcp_owner="$(vpskit_verify_tcp_443_owner)"
+  if [ "${tcp_owner}" = "xray" ]; then
+    vpskit_verify_emit_check VLESS_REALITY_PRESERVED pass "tcp_443=bound service=xray"
+    return 0
+  fi
+
+  vpskit_verify_emit_check VLESS_REALITY_PRESERVED fail "tcp_443=${tcp_owner:-none}"
+  return 1
+}
+
+vpskit_verify_trojan() {
+  local status=0
+
+  vpskit_verify_trojan_binary || status=1
+  vpskit_verify_trojan_config || status=1
+  vpskit_verify_trojan_subscription_file || status=1
+  vpskit_verify_trojan_service || status=1
+  vpskit_verify_trojan_listener || status=1
+  vpskit_verify_trojan_ufw || status=1
+  vpskit_verify_trojan_vless_preserved || status=1
+
+  if [ "${status}" -eq 0 ]; then
+    printf 'VERIFY_TROJAN=pass\n'
+  else
+    printf 'VERIFY_TROJAN=fail\n'
   fi
 
   return "${status}"

@@ -15,7 +15,7 @@ setup() {
 @test "version command works" {
   run bash "${CLI_PATH}" version
   [ "$status" -eq 0 ]
-  [[ "$output" == *"VPSKit v0.5.0-beta"* ]]
+  [[ "$output" == *"VPSKit v0.6.0-beta"* ]]
 }
 
 @test "status does not mutate files" {
@@ -67,12 +67,16 @@ setup() {
 }
 
 @test "README after-install verification examples remain accurate" {
-  run bash -lc "grep -F 'bash vpskit/cli/vpskit.sh verify ssh-user' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify vless-reality' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify hysteria2' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh sub show' '${PROJECT_ROOT}/README.md'"
+  run bash -lc "grep -F 'bash vpskit/cli/vpskit.sh verify ssh-user' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify vless-reality' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify hysteria2' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh install trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh sub export trojan' '${PROJECT_ROOT}/README.md'"
   [ "$status" -eq 0 ]
 }
 
 @test "release notes include hysteria2 beta scope" {
   [ -f "${PROJECT_ROOT}/release/v0.5.0-beta-notes.md" ]
+}
+
+@test "release notes include trojan beta scope" {
+  [ -f "${PROJECT_ROOT}/release/v0.6.0-beta-notes.md" ]
 }
 
 @test "install docs exist" {

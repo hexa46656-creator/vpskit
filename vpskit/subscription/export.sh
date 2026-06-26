@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 
+VPSKIT_SUBSCRIPTION_MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+# shellcheck source=../core/common.sh
+source "${VPSKIT_SUBSCRIPTION_MODULE_DIR}/../core/common.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../install/trojan.sh
+source "${VPSKIT_SUBSCRIPTION_MODULE_DIR}/../install/trojan.sh"
+
 vpskit_subscription_supported_formats() {
-  printf 'SUPPORTED_SUB_FORMATS=raw,base64,shadowrocket,v2rayng,clash-meta,sing-box,hysteria2\n'
+  printf 'SUPPORTED_SUB_FORMATS=raw,base64,shadowrocket,v2rayng,clash-meta,sing-box,hysteria2,trojan\n'
 }
 
 vpskit_subscription_resolve_file() {

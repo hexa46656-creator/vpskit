@@ -32,6 +32,17 @@ tls:
 EOF
 }
 
+prepare_trojan_subscription_file() {
+  export VPSKIT_TROJAN_SUBSCRIPTION_FILE="${BATS_TEST_TMPDIR}/trojan.yaml"
+  cat >"${VPSKIT_TROJAN_SUBSCRIPTION_FILE}" <<'EOF'
+server: 203.0.113.10
+port: 8443
+password: trojan-password
+sni: 203.0.113.10
+allowInsecure: 1
+EOF
+}
+
 test_subscription_uri="vless://11111111-1111-4111-8111-111111111111@154.26.184.229:443?encryption=none&security=reality&sni=www.cloudflare.com&fp=chrome&pbk=public-test-key&sid=abcdef1234567890&type=tcp&flow=xtls-rprx-vision#VPSKit-Reality"
 
 assert_file_ends_with_single_newline() {
@@ -61,7 +72,7 @@ PY
   run bash "${CLI_PATH}" sub formats
 
   [ "$status" -eq 0 ]
-  [ "$output" = "SUPPORTED_SUB_FORMATS=raw,base64,shadowrocket,v2rayng,clash-meta,sing-box,hysteria2" ]
+  [ "$output" = "SUPPORTED_SUB_FORMATS=raw,base64,shadowrocket,v2rayng,clash-meta,sing-box,hysteria2,trojan" ]
 }
 
 @test "sub export raw returns the stored uri" {
@@ -384,6 +395,58 @@ PY
 
   [ "$status" -eq 1 ]
   [ "$output" = "SUB_EXPORT=fail format=hysteria2 reason=missing_subscription_file" ]
+}
+
+@test "sub export trojan returns the stored trojan uri" {
+  prepare_trojan_subscription_file
+
+  run bash "${CLI_PATH}" sub export trojan
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "trojan://trojan-password@203.0.113.10:8443?sni=203.0.113.10&allowInsecure=1#VPSKit-Trojan" ]
+}
+
+@test "sub export trojan stdout ends with exactly one newline" {
+  prepare_trojan_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/trojan-stdout.txt"
+
+  run bash -c 'bash "$1" sub export trojan >"$2"' _ "${CLI_PATH}" "${output_file}"
+
+  [ "$status" -eq 0 ]
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
+@test "sub export trojan --output writes file and prints status only" {
+  prepare_trojan_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/trojan.txt"
+
+  run bash "${CLI_PATH}" sub export trojan --output "${output_file}"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUB_EXPORT=pass format=trojan output=${output_file}" ]
+  [ "$(tr -d '\n' < "${output_file}")" = "trojan://trojan-password@203.0.113.10:8443?sni=203.0.113.10&allowInsecure=1#VPSKit-Trojan" ]
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
+@test "sub export trojan -o alias works" {
+  prepare_trojan_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/trojan-alias.txt"
+
+  run bash "${CLI_PATH}" sub export trojan -o "${output_file}"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUB_EXPORT=pass format=trojan output=${output_file}" ]
+  [ "$(tr -d '\n' < "${output_file}")" = "trojan://trojan-password@203.0.113.10:8443?sni=203.0.113.10&allowInsecure=1#VPSKit-Trojan" ]
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
+@test "sub export trojan fails clearly when the subscription file is missing" {
+  export VPSKIT_TROJAN_SUBSCRIPTION_FILE="${BATS_TEST_TMPDIR}/missing-trojan.yaml"
+
+  run bash "${CLI_PATH}" sub export trojan
+
+  [ "$status" -eq 1 ]
+  [ "$output" = "SUB_EXPORT=fail format=trojan reason=missing_subscription_file" ]
 }
 
 @test "sub validate passes with valid vless reality uri" {

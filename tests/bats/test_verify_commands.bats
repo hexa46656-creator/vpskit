@@ -52,12 +52,103 @@ prepare_verify_hysteria2_rootfs() {
   export VPSKIT_TEST_UFW_STATUS=$'Status: active\n443/udp ALLOW IN Anywhere'
 }
 
+prepare_verify_trojan_rootfs() {
+  prepare_verify_rootfs
+  mkdir -p "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin" "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray" "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  chmod +x "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  cat >"${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json" <<'EOF'
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "tag": "vless-reality-vision",
+      "listen": "0.0.0.0",
+      "port": 443,
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "11111111-1111-4111-8111-111111111111",
+            "flow": "xtls-rprx-vision",
+            "email": "default@vpskit"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "www.cloudflare.com:443",
+          "xver": 0,
+          "serverNames": [
+            "www.cloudflare.com"
+          ],
+          "privateKey": "private-test-key",
+          "shortIds": [
+            "abcdef1234567890"
+          ]
+        }
+      }
+    },
+    {
+      "tag": "trojan-tcp-8443",
+      "listen": "0.0.0.0",
+      "port": 8443,
+      "protocol": "trojan",
+      "settings": {
+        "clients": [
+          {
+            "password": "test-password",
+            "email": "default@vpskit"
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "tls",
+        "tlsSettings": {
+          "certificates": [
+            {
+              "certificateFile": "/etc/vpskit/trojan/server.crt",
+              "keyFile": "/etc/vpskit/trojan/server.key"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "direct",
+      "protocol": "freedom"
+    }
+  ]
+}
+EOF
+  printf 'server: 203.0.113.10\nport: 8443\npassword: test-password\nsni: 203.0.113.10\nallowInsecure: 1\n' >"${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/trojan.yaml"
+  printf 'VPSKIT_TROJAN_SERVER=203.0.113.10\nVPSKIT_TROJAN_PORT=8443\nVPSKIT_TROJAN_PASSWORD=test-password\nVPSKIT_TROJAN_SNI=203.0.113.10\nVPSKIT_TROJAN_ALLOW_INSECURE=1\n' >"${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/trojan.env"
+  export VPSKIT_TEST_XRAY_BIN="${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_SERVICE_EXISTS="xray xray.service"
+  export VPSKIT_TEST_SERVICE_ACTIVE="xray xray.service"
+  export VPSKIT_TEST_TCP_443_OWNER=xray
+  export VPSKIT_TEST_TCP_8443_OWNER=xray
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n8443/tcp ALLOW IN Anywhere'
+}
+
 @test "verify help lists read-only verification targets" {
   run bash "${CLI_PATH}" verify help
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"vpskit verify ssh-user"* ]]
   [[ "$output" == *"vpskit verify vless-reality"* ]]
+  [[ "$output" == *"vpskit verify trojan"* ]]
 }
 
 @test "verify rejects unknown target" {
@@ -263,4 +354,104 @@ prepare_verify_hysteria2_rootfs() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"UFW_443_UDP=fail status=active rule=missing"* ]]
   [[ "$output" == *"VERIFY_HYSTERIA2=fail"* ]]
+}
+
+@test "verify trojan passes for active xray tcp 8443 and subscription" {
+  prepare_verify_trojan_rootfs
+
+  run bash "${CLI_PATH}" verify trojan
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"TROJAN_BINARY=pass path="* ]]
+  [[ "$output" == *"TROJAN_CONFIG=pass"* ]]
+  [[ "$output" == *"TROJAN_SUBSCRIPTION_FILE=pass path="* ]]
+  [[ "$output" == *"TROJAN_SERVICE=pass state=active service=xray"* ]]
+  [[ "$output" == *"TCP_8443_LISTENER=pass service=xray"* ]]
+  [[ "$output" == *"UFW_8443_TCP=pass status=active rule=present"* ]]
+  [[ "$output" == *"VLESS_REALITY_PRESERVED=pass tcp_443=bound service=xray"* ]]
+  [[ "$output" == *"VERIFY_TROJAN=pass"* ]]
+}
+
+@test "verify trojan fails when subscription file is missing" {
+  prepare_verify_trojan_rootfs
+  rm "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/trojan.yaml"
+
+  run bash "${CLI_PATH}" verify trojan
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"TROJAN_SUBSCRIPTION_FILE=fail path="* ]]
+  [[ "$output" == *"VERIFY_TROJAN=fail"* ]]
+}
+
+@test "verify trojan fails when xray service is inactive" {
+  prepare_verify_trojan_rootfs
+  export VPSKIT_TEST_SERVICE_ACTIVE="other.service"
+
+  run bash "${CLI_PATH}" verify trojan
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"TROJAN_SERVICE=fail state=inactive"* ]]
+  [[ "$output" == *"VERIFY_TROJAN=fail"* ]]
+}
+
+@test "verify trojan passes when tcp 8443 is owned by xray" {
+  prepare_verify_trojan_rootfs
+
+  run bash "${CLI_PATH}" verify trojan
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"TCP_8443_LISTENER=pass service=xray"* ]]
+}
+
+@test "verify trojan fails when tcp 8443 is owned by another process" {
+  prepare_verify_trojan_rootfs
+  export VPSKIT_TEST_TCP_8443_OWNER=nginx
+
+  run bash "${CLI_PATH}" verify trojan
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"TCP_8443_LISTENER=fail expected=xray actual=nginx"* ]]
+  [[ "$output" == *"VERIFY_TROJAN=fail"* ]]
+}
+
+@test "verify trojan passes with ipv4 ufw 8443 rule" {
+  prepare_verify_trojan_rootfs
+
+  run bash "${CLI_PATH}" verify trojan
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"UFW_8443_TCP=pass status=active rule=present"* ]]
+}
+
+@test "verify trojan does not accept v6-only ufw 8443 as ipv4 pass" {
+  prepare_verify_trojan_rootfs
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n8443/tcp (v6) ALLOW IN Anywhere (v6)'
+
+  run bash "${CLI_PATH}" verify trojan
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"UFW_8443_TCP=fail status=active rule=missing"* ]]
+  [[ "$output" == *"VERIFY_TROJAN=fail"* ]]
+}
+
+@test "verify trojan skips inactive ufw without failing" {
+  prepare_verify_trojan_rootfs
+  export VPSKIT_TEST_UFW_STATUS="Status: inactive"
+
+  run bash "${CLI_PATH}" verify trojan
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"UFW_8443_TCP=skip status=inactive reason=not_enforced"* ]]
+  [[ "$output" == *"VERIFY_TROJAN=pass"* ]]
+}
+
+@test "verify trojan fails when vless 443 is not bound by xray" {
+  prepare_verify_trojan_rootfs
+  export VPSKIT_TEST_TCP_443_OWNER=nginx
+
+  run bash "${CLI_PATH}" verify trojan
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"VLESS_REALITY_PRESERVED=fail tcp_443=nginx"* ]]
+  [[ "$output" == *"VERIFY_TROJAN=fail"* ]]
 }
