@@ -2,6 +2,7 @@
 
 ## 交付给客户的内容
 
+- 通过 `vpskit sub bundle --redact --output <dir>` 生成的脱敏客户端打包
 - 通过 `vpskit demo package --redact --output <dir>` 生成的脱敏演示包
 - `vpskit qa --redact` 的 QA 报告
 - 客户实际会用到的一个私有客户端导出文件
@@ -27,6 +28,12 @@
 vpskit qa
 vpskit qa --redact
 vpskit qa --redact --output ./qa-report.txt
+```
+
+## 如何生成客户端打包
+
+```bash
+vpskit sub bundle --redact --output ./vpskit-client-bundle
 ```
 
 ## 如何生成脱敏演示包
@@ -66,3 +73,5 @@ ufw status verbose
 
 - 日志里可能包含公网源 IP
 - 分享前要先脱敏
+
+另见：[docs/client-bundle.zh.md](docs/client-bundle.zh.md)

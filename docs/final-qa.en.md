@@ -39,4 +39,5 @@ vpskit verify hysteria2
 vpskit verify trojan
 vpskit doctor
 vpskit sub export trojan --redact
+vpskit sub bundle --redact --output ./vpskit-client-bundle
 ```

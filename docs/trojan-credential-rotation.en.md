@@ -17,6 +17,7 @@ vpskit rotate trojan --yes
 vpskit verify trojan
 vpskit sub export trojan
 vpskit sub export trojan --redact
+vpskit sub bundle --redact --output ./vpskit-client-bundle
 ```
 
 ## What Changes
@@ -37,6 +38,6 @@ vpskit sub export trojan --redact
 
 - Use `vpskit rotate trojan --dry-run` before a real rotation.
 - Use `vpskit sub export trojan --redact` for screenshots and support requests.
+- Rebuild the client bundle after rotation so the handoff files stay current.
 - Do not share `/var/lib/vpskit/trojan.yaml` publicly; it contains the live password.
 - Do not share the full Trojan URI publicly.
-

@@ -60,6 +60,9 @@ source "${VPSKIT_ROOT}/subscription/shadowrocket_repair.sh"
 # shellcheck source=../subscription/export.sh
 source "${VPSKIT_ROOT}/subscription/export.sh"
 # shellcheck disable=SC1091
+# shellcheck source=../subscription/bundle.sh
+source "${VPSKIT_ROOT}/subscription/bundle.sh"
+# shellcheck disable=SC1091
 # shellcheck source=../qa/run.sh
 source "${VPSKIT_ROOT}/qa/run.sh"
 # shellcheck disable=SC1091
@@ -71,18 +74,19 @@ source "${VPSKIT_ROOT}/verify/checks.sh"
 
 vpskit_cli_version() {
   cat <<'EOF'
-VPSKit v0.6.3-beta
+VPSKit v0.7.0-beta
 Available commands: version, status, doctor, qa, sub, demo, fix, install, verify, rotate
-Available components: CLI, read-only QA, demo packaging, hardening installer, VLESS Reality installer, Hysteria2 installer, Trojan installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
+Available components: CLI, read-only QA, demo packaging, unified client bundle export, hardening installer, VLESS Reality installer, Hysteria2 installer, Trojan installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
 EOF
 }
 
 vpskit_cli_status() {
-  printf 'VERSION=VPSKit v0.6.3-beta\n'
+  printf 'VERSION=VPSKit v0.7.0-beta\n'
   vpskit_system_inspection_summary
   printf 'CLI=available\n'
   printf 'QA=available\n'
   printf 'DEMO_PACKAGE=available\n'
+  printf 'SUB_BUNDLE=available\n'
   printf 'SUBSCRIPTION_REPAIR=available\n'
   printf 'SUBSCRIPTION_EXPORT=available\n'
   printf 'DNS_HEALTH=available\n'
@@ -176,6 +180,12 @@ vpskit_cli_sub() {
       fi
       return 1
       ;;
+    bundle)
+      if vpskit_cli_sub_bundle "$@"; then
+        return 0
+      fi
+      return 1
+      ;;
     validate)
       if vpskit_cli_sub_validate; then
         return 0
@@ -195,6 +205,11 @@ Usage:
   vpskit sub export trojan --redact
   vpskit sub export trojan --redact --output <path>
   vpskit sub export trojan --redact -o <path>
+  vpskit sub bundle
+  vpskit sub bundle --redact
+  vpskit sub bundle --output <dir>
+  vpskit sub bundle --redact --output <dir>
+  vpskit sub bundle --force --output <dir>
   vpskit sub validate
 EOF
       return 0
@@ -358,6 +373,10 @@ vpskit_cli_sub_validate() {
   return 1
 }
 
+vpskit_cli_sub_bundle() {
+  vpskit_bundle_export_main "$@"
+}
+
 vpskit_cli_fix() {
   local input="${VPSKIT_FIX_INPUT:-}"
   local output="${VPSKIT_FIX_OUTPUT:-}"
@@ -467,6 +486,11 @@ Usage:
   vpskit sub export trojan --redact
   vpskit sub export trojan --redact --output <path>
   vpskit sub export trojan --redact -o <path>
+  vpskit sub bundle
+  vpskit sub bundle --redact
+  vpskit sub bundle --output <dir>
+  vpskit sub bundle --redact --output <dir>
+  vpskit sub bundle --force --output <dir>
   vpskit sub validate
   vpskit demo package
   vpskit demo package --redact

@@ -88,7 +88,7 @@ PY
   run bash "${CLI_PATH}" qa
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"VPSKIT_QA_VERSION=v0.6.3-beta"* ]]
+  [[ "$output" == *"VPSKIT_QA_VERSION=v0.7.0-beta"* ]]
   [[ "$output" == *"QA_MODE=redacted"* ]]
   [[ "$output" == *"QA_READ_ONLY=yes"* ]]
   [[ "$output" == *"SENSITIVE_OUTPUT=redacted"* ]]
@@ -120,7 +120,7 @@ PY
   [ "$status" -eq 0 ]
   [[ "$output" == *"VPSKIT_QA=pass"* ]]
   [ -f "${output_file}" ]
-  [[ "$(cat "${output_file}")" == *"VPSKIT_QA_VERSION=v0.6.3-beta"* ]]
+  [[ "$(cat "${output_file}")" == *"VPSKIT_QA_VERSION=v0.7.0-beta"* ]]
   [[ "$(cat "${output_file}")" == *"QA_READ_ONLY=yes"* ]]
   [[ "$(cat "${output_file}")" == *"SENSITIVE_OUTPUT=redacted"* ]]
   assert_file_ends_with_single_newline "${output_file}"
@@ -174,7 +174,7 @@ PY
   [[ "$(cat "${output_dir}/protocol-layout.txt")" == *"UDP 443  -> Hysteria2"* ]]
   [[ "$(cat "${output_dir}/protocol-layout.txt")" == *"TCP 8443 -> Xray -> Trojan TLS"* ]]
   [[ "$(cat "${output_dir}/security-notes.en.md")" == *"Do not share the full Trojan URI publicly."* ]]
-  [[ "$(cat "${output_dir}/qa-report.txt")" == *"VPSKIT_QA_VERSION=v0.6.3-beta"* ]]
+  [[ "$(cat "${output_dir}/qa-report.txt")" == *"VPSKIT_QA_VERSION=v0.7.0-beta"* ]]
   [[ "$(cat "${output_dir}/trojan-redacted.uri")" == *"REDACTED"* ]]
   [[ "$(cat "${output_dir}/trojan-redacted.uri")" != *"test-password"* ]]
   assert_file_ends_with_single_newline "${output_dir}/README.en.md"

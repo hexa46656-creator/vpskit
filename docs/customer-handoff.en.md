@@ -2,6 +2,7 @@
 
 ## What To Give A Customer
 
+- The redacted client bundle from `vpskit sub bundle --redact --output <dir>`
 - The redacted demo package from `vpskit demo package --redact --output <dir>`
 - The QA report from `vpskit qa --redact`
 - One private client export for the protocol they will actually use
@@ -27,6 +28,12 @@
 vpskit qa
 vpskit qa --redact
 vpskit qa --redact --output ./qa-report.txt
+```
+
+## How To Generate A Client Bundle
+
+```bash
+vpskit sub bundle --redact --output ./vpskit-client-bundle
 ```
 
 ## How To Generate A Redacted Demo Package
@@ -66,3 +73,5 @@ ufw status verbose
 
 - Logs may contain public source IP addresses
 - Redact logs before sharing them with customers or in support tickets
+
+See also: [docs/client-bundle.en.md](docs/client-bundle.en.md)

@@ -4,6 +4,8 @@
 
 生成一个本地交付包，只包含安全文件。
 
+如果是面向客户的最新交付流程，优先使用 `vpskit sub bundle --redact --output ./vpskit-client-bundle`。
+
 ## 命令
 
 ```bash
@@ -22,6 +24,8 @@ vpskit demo package --redact --output ./vpskit-demo-package
 - `security-notes.zh.md`
 - `trojan-redacted.uri`
 - `command-checklist.txt`
+
+客户端打包命令还会补充协议导入文件和 manifest；这个演示包继续保留给更广泛的 QA / 演示共享使用。
 
 ## 行为
 

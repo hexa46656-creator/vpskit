@@ -15,7 +15,7 @@ setup() {
 @test "version command works" {
   run bash "${CLI_PATH}" version
   [ "$status" -eq 0 ]
-  [[ "$output" == *"VPSKit v0.6.3-beta"* ]]
+  [[ "$output" == *"VPSKit v0.7.0-beta"* ]]
 }
 
 @test "status does not mutate files" {
@@ -67,7 +67,7 @@ setup() {
 }
 
 @test "README after-install verification examples remain accurate" {
-  run bash -lc "grep -F 'bash vpskit/cli/vpskit.sh verify ssh-user' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify vless-reality' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify hysteria2' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh install trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh sub export trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh sub export trojan --redact' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh qa --redact' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh demo package --redact --output ./vpskit-demo-package' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh rotate trojan --yes' '${PROJECT_ROOT}/README.md'"
+  run bash -lc "grep -F 'bash vpskit/cli/vpskit.sh verify ssh-user' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify vless-reality' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify hysteria2' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh verify trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh install trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh sub export trojan' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh sub export trojan --redact' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh sub bundle --redact --output ./vpskit-client-bundle' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh qa --redact' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh demo package --redact --output ./vpskit-demo-package' '${PROJECT_ROOT}/README.md' && grep -F 'bash vpskit/cli/vpskit.sh rotate trojan --yes' '${PROJECT_ROOT}/README.md'"
   [ "$status" -eq 0 ]
 }
 
@@ -80,6 +80,8 @@ setup() {
   [ -f "${PROJECT_ROOT}/release/v0.6.0-beta-test-report.md" ]
   [ -f "${PROJECT_ROOT}/release/v0.6.1-beta-notes.md" ]
   [ -f "${PROJECT_ROOT}/release/v0.6.2-beta-notes.md" ]
+  [ -f "${PROJECT_ROOT}/release/v0.7.0-beta-notes.md" ]
+  [ -f "${PROJECT_ROOT}/release/v0.7.0-beta-client-bundle-checklist.md" ]
   [ -f "${PROJECT_ROOT}/release/v0.6.3-beta-notes.md" ]
   [ -f "${PROJECT_ROOT}/release/v0.6.3-beta-demo-checklist.md" ]
 }
@@ -87,6 +89,8 @@ setup() {
 @test "handoff docs exist" {
   [ -f "${PROJECT_ROOT}/docs/customer-handoff.en.md" ]
   [ -f "${PROJECT_ROOT}/docs/customer-handoff.zh.md" ]
+  [ -f "${PROJECT_ROOT}/docs/client-bundle.en.md" ]
+  [ -f "${PROJECT_ROOT}/docs/client-bundle.zh.md" ]
   [ -f "${PROJECT_ROOT}/docs/demo-packaging.en.md" ]
   [ -f "${PROJECT_ROOT}/docs/demo-packaging.zh.md" ]
   [ -f "${PROJECT_ROOT}/docs/final-qa.en.md" ]

@@ -17,6 +17,7 @@ vpskit rotate trojan --yes
 vpskit verify trojan
 vpskit sub export trojan
 vpskit sub export trojan --redact
+vpskit sub bundle --redact --output ./vpskit-client-bundle
 ```
 
 ## 会发生什么
@@ -37,5 +38,6 @@ vpskit sub export trojan --redact
 
 - 真实轮换前先执行 `vpskit rotate trojan --dry-run`。
 - 截图和支持工单使用 `vpskit sub export trojan --redact`。
+- 轮换后重新生成客户端打包，保证交付内容是最新的。
 - 不要公开分享 `/var/lib/vpskit/trojan.yaml`，其中包含当前可用密码。
 - 不要公开分享完整 Trojan URI。
