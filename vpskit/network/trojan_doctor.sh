@@ -116,6 +116,9 @@ vpskit_trojan_doctor() {
 
   printf 'TROJAN_PORT=%s/tcp\n' "$(vpskit_trojan_port)"
   printf 'TROJAN_INSTALLED=%s\n' "${installed}"
+  printf 'TROJAN_COMPATIBILITY_MODE=compatibility_fallback\n'
+  printf 'TROJAN_RUNTIME=xray\n'
+  printf 'TROJAN_TLS_MODE=self_signed\n'
   printf 'TROJAN_BINARY=%s\n' "${binary_state}"
   printf 'TROJAN_CONFIG=%s\n' "${config_state}"
   printf 'TROJAN_SERVICE=%s\n' "${service_state}"

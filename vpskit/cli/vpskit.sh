@@ -62,14 +62,14 @@ source "${VPSKIT_ROOT}/verify/checks.sh"
 
 vpskit_cli_version() {
   cat <<'EOF'
-VPSKit v0.6.0-beta
+VPSKit v0.6.1-beta
 Available commands: version, status, doctor, sub, fix, install, verify
 Available components: CLI, hardening installer, VLESS Reality installer, Hysteria2 installer, Trojan installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
 EOF
 }
 
 vpskit_cli_status() {
-  printf 'VERSION=VPSKit v0.6.0-beta\n'
+  printf 'VERSION=VPSKit v0.6.1-beta\n'
   vpskit_system_inspection_summary
   printf 'CLI=available\n'
   printf 'SUBSCRIPTION_REPAIR=available\n'

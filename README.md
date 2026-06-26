@@ -2,7 +2,7 @@
 
 VPSKit is a practical VPS deployment and repair toolkit.
 
-Current beta capability: `v0.6.0-beta` adds Trojan TCP 8443 support and keeps the existing services:
+Current beta capability: `v0.6.1-beta` keeps the existing services and stabilizes Trojan compatibility:
 
 - VPS hardening for Ubuntu 24.04 LTS
 - Xray VLESS Reality over TCP 443 with `xtls-rprx-vision`
@@ -125,12 +125,14 @@ Hysteria2:
 
 Trojan:
 
-- Uses TCP 8443 and can coexist with VLESS Reality on TCP 443 and Hysteria2 on UDP 443.
+- Uses TCP 8443 and runs inside Xray, so process-level checks show `xray` on 8443 while the inbound protocol remains Trojan.
+- Trojan is a compatibility fallback. VLESS Reality remains the primary recommendation.
 - The installer writes the Trojan TLS cert and key to `/etc/vpskit/trojan/server.crt` and `/etc/vpskit/trojan/server.key`.
 - The installer stores Trojan state at `/var/lib/vpskit/trojan.yaml` and `/var/lib/vpskit/trojan.env`.
-- v0.6.0-beta uses self-signed TLS by default and does not require a domain name, certbot, or Let's Encrypt.
+- v0.6.1-beta uses self-signed TLS by default and does not require a domain name, certbot, or Let's Encrypt.
 - Clients may need `allowInsecure=1` or a trusted cert if they enforce TLS validation.
 - TCP 8443 must be reachable externally for the service to work.
+- See [docs/trojan-client-compatibility.en.md](docs/trojan-client-compatibility.en.md) and [docs/trojan-recovery.en.md](docs/trojan-recovery.en.md).
 - After install, run `vpskit verify trojan` and `vpskit doctor`.
 
 `v0.6.0-beta` adds Trojan TCP 8443 support alongside Hysteria2.
@@ -179,6 +181,8 @@ Release notes:
 - See [release/v0.5.0-beta-test-report.md](release/v0.5.0-beta-test-report.md)
 - See [release/v0.5.1-beta-notes.md](release/v0.5.1-beta-notes.md)
 - See [release/v0.6.0-beta-notes.md](release/v0.6.0-beta-notes.md)
+- See [release/v0.6.0-beta-test-report.md](release/v0.6.0-beta-test-report.md)
+- See [release/v0.6.1-beta-notes.md](release/v0.6.1-beta-notes.md)
 - See [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - See [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
 
@@ -186,7 +190,7 @@ Release notes:
 
 VPSKit 是一个实用的 VPS 部署与修复工具包。
 
-当前 beta 能力：`v0.6.0-beta` 新增 Trojan TCP 8443 支持，并继续支持：
+当前 beta 能力：`v0.6.1-beta` 继续支持现有能力，并加强 Trojan 兼容性：
 
 - Ubuntu 24.04 LTS VPS 安全加固
 - 基于 TCP 443 和 `xtls-rprx-vision` 的 Xray VLESS Reality
@@ -309,12 +313,14 @@ Hysteria2：
 
 Trojan：
 
-- 使用 TCP 8443，并且可以与 TCP 443 上的 VLESS Reality 和 UDP 443 上的 Hysteria2 共存。
+- 使用 TCP 8443，并且运行在 Xray 内部，所以进程级检查会显示 `xray` 占用 8443，但入口协议仍然是 Trojan。
+- Trojan 是兼容性回退方案，VLESS Reality 仍然是首选。
 - 安装器会把 Trojan TLS 证书和私钥写到 `/etc/vpskit/trojan/server.crt` 和 `/etc/vpskit/trojan/server.key`。
 - 安装器会把 Trojan 状态保存到 `/var/lib/vpskit/trojan.yaml` 和 `/var/lib/vpskit/trojan.env`。
-- `v0.6.0-beta` 默认使用自签名 TLS，不需要域名、certbot 或 Let’s Encrypt。
+- `v0.6.1-beta` 默认使用自签名 TLS，不需要域名、certbot 或 Let’s Encrypt。
 - 客户端如强制校验证书，可能需要 `allowInsecure=1` 或信任证书。
 - TCP 8443 必须能从 VPS 外部访问，服务才会正常工作。
+- 参见 [docs/trojan-client-compatibility.zh.md](docs/trojan-client-compatibility.zh.md) 和 [docs/trojan-recovery.zh.md](docs/trojan-recovery.zh.md)。
 - 安装后请运行 `vpskit verify trojan` 和 `vpskit doctor`。
 
 `v0.6.0-beta` 新增 Trojan TCP 8443 支持，并继续包含 Hysteria2。
@@ -363,5 +369,7 @@ Trojan：
 - 参见 [release/v0.5.0-beta-test-report.md](release/v0.5.0-beta-test-report.md)
 - 参见 [release/v0.5.1-beta-notes.md](release/v0.5.1-beta-notes.md)
 - 参见 [release/v0.6.0-beta-notes.md](release/v0.6.0-beta-notes.md)
+- 参见 [release/v0.6.0-beta-test-report.md](release/v0.6.0-beta-test-report.md)
+- 参见 [release/v0.6.1-beta-notes.md](release/v0.6.1-beta-notes.md)
 - 参见 [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - 参见 [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
