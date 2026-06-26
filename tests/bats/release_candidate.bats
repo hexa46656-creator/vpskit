@@ -15,7 +15,7 @@ setup() {
 @test "version command works" {
   run bash "${CLI_PATH}" version
   [ "$status" -eq 0 ]
-  [[ "$output" == *"VPSKit v0.4.0-beta"* ]]
+  [[ "$output" == *"VPSKit v0.4.1-beta"* ]]
 }
 
 @test "status does not mutate files" {

@@ -53,122 +53,53 @@ vpskit_subscription_print_file() {
   printf '%s\n' "${content}"
 }
 
+vpskit_subscription_uri_tool() {
+  python3 "${VPSKIT_ROOT}/subscription/uri_tool.py" "$@"
+}
+
 vpskit_subscription_render_export() {
   local format="$1"
   local uri="$2"
+  local rendered
 
-  python3 - "${format}" "${uri}" <<'PY'
-from base64 import b64encode
-from urllib.parse import parse_qs, unquote, urlparse
-import json
-import re
-import sys
+  if rendered="$(vpskit_subscription_uri_tool render "${format}" "${uri}")"; then
+    printf '%s\n' "${rendered}"
+    return 0
+  fi
 
-format_name = sys.argv[1]
-uri = sys.argv[2]
+  printf '%s\n' "${rendered}"
+  return 1
+}
 
+vpskit_subscription_validate() {
+  local uri="$1"
 
-def fail(message: str) -> None:
-    print(f"ERROR {message}")
-    raise SystemExit(1)
+  vpskit_subscription_uri_tool validate "${uri}"
+}
 
+vpskit_subscription_write_output_file() {
+  local format="$1"
+  local output_path="$2"
+  local content="$3"
+  local parent_dir
 
-def yaml_scalar(value: str) -> str:
-    if re.fullmatch(r"[A-Za-z0-9._:-]+", value):
-        return value
-    return json.dumps(value)
+  parent_dir="$(dirname "${output_path}")"
 
+  if [ -d "${output_path}" ]; then
+    printf 'SUB_EXPORT=fail format=%s reason=output_path_is_directory output=%s\n' "${format}" "${output_path}"
+    return 1
+  fi
 
-parsed = urlparse(uri)
-if parsed.scheme.lower() != "vless":
-    fail("malformed VLESS Reality URI: expected vless scheme")
+  if [ ! -d "${parent_dir}" ]; then
+    printf 'SUB_EXPORT=fail format=%s reason=parent_directory_missing output=%s\n' "${format}" "${output_path}"
+    return 1
+  fi
 
-try:
-    port = parsed.port
-except ValueError:
-    fail("malformed VLESS Reality URI: invalid port")
+  if ! printf '%s\n' "${content}" >"${output_path}"; then
+    printf 'SUB_EXPORT=fail format=%s reason=write_failed output=%s\n' "${format}" "${output_path}"
+    return 1
+  fi
 
-if not parsed.username:
-    fail("malformed VLESS Reality URI: missing uuid")
-if not parsed.hostname:
-    fail("malformed VLESS Reality URI: missing server")
-if port is None:
-    fail("malformed VLESS Reality URI: missing port")
-
-params = parse_qs(parsed.query, keep_blank_values=True)
-
-if params.get("security", [""])[0] != "reality":
-    fail("malformed VLESS Reality URI: security must be reality")
-
-required_params = {}
-for key in ("sni", "fp", "pbk", "sid", "flow"):
-    values = params.get(key)
-    if not values or values[0] == "":
-        fail(f"malformed VLESS Reality URI: missing required parameter: {key}")
-    required_params[key] = unquote(values[0])
-
-tag = unquote(parsed.fragment) if parsed.fragment else "VPSKit-Reality"
-uuid = unquote(parsed.username)
-server = parsed.hostname
-
-if format_name == "base64":
-    print(b64encode(uri.encode("utf-8")).decode("ascii"))
-    raise SystemExit(0)
-
-if format_name == "clash-meta":
-    print("proxies:")
-    print(f"  - name: {yaml_scalar(tag)}")
-    print("    type: vless")
-    print(f"    server: {server}")
-    print(f"    port: {port}")
-    print(f"    uuid: {uuid}")
-    print("    network: tcp")
-    print("    tls: true")
-    print("    udp: true")
-    print(f"    flow: {yaml_scalar(required_params['flow'])}")
-    print(f"    servername: {yaml_scalar(required_params['sni'])}")
-    print(f"    client-fingerprint: {yaml_scalar(required_params['fp'])}")
-    print("    reality-opts:")
-    print(f"      public-key: {yaml_scalar(required_params['pbk'])}")
-    print(f"      short-id: {yaml_scalar(required_params['sid'])}")
-    print("proxy-groups:")
-    print("  - name: PROXY")
-    print("    type: select")
-    print("    proxies:")
-    print(f"      - {yaml_scalar(tag)}")
-    print("rules:")
-    print("  - MATCH,PROXY")
-    raise SystemExit(0)
-
-if format_name == "sing-box":
-    payload = {
-        "outbounds": [
-            {
-                "type": "vless",
-                "tag": tag,
-                "server": server,
-                "server_port": port,
-                "uuid": uuid,
-                "flow": required_params["flow"],
-                "tls": {
-                    "enabled": True,
-                    "server_name": required_params["sni"],
-                    "utls": {
-                        "enabled": True,
-                        "fingerprint": required_params["fp"],
-                    },
-                    "reality": {
-                        "enabled": True,
-                        "public_key": required_params["pbk"],
-                        "short_id": required_params["sid"],
-                    },
-                },
-            }
-        ]
-    }
-    print(json.dumps(payload, indent=2))
-    raise SystemExit(0)
-
-fail(f"unsupported sub export format: {format_name}")
-PY
+  printf 'SUB_EXPORT=pass format=%s output=%s\n' "${format}" "${output_path}"
+  return 0
 }
