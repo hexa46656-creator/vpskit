@@ -26,7 +26,7 @@ vpskit_dns_health_resolve_a() {
     command+=("@${resolver}")
   fi
 
-  if ! command -v dig >/dev/null 2>&1; then
+  if [ "${VPSKIT_TEST_DNS_HEALTH_MISSING_TOOL:-}" = "dig" ] || ! command -v dig >/dev/null 2>&1; then
     return 1
   fi
 
@@ -44,8 +44,15 @@ vpskit_dns_health_emit() {
     "${status}" "${host}" "${system_dns}" "${cloudflare_dns}" "${google_dns}"
 }
 
+vpskit_dns_health_emit_unknown_missing_tool() {
+  local host="$1"
+  local tool="$2"
+
+  printf 'DNS_HEALTH=unknown reason=missing_tool tool=%s host=%s\n' "${tool}" "${host}"
+}
+
 vpskit_dns_health() {
-  local host="${1:-${VPSKIT_DNS_HEALTH_HOST:-localhost}}"
+  local host="${1:-${VPSKIT_DNS_HEALTH_HOST:-www.cloudflare.com}}"
   local system_dns
   local cloudflare_dns
   local google_dns
@@ -65,6 +72,11 @@ vpskit_dns_health() {
   if [ -n "${VPSKIT_TEST_DNS_HEALTH_FAIL:-}" ]; then
     vpskit_dns_health_emit fail "${host}" empty empty empty
     return 1
+  fi
+
+  if [ "${VPSKIT_TEST_DNS_HEALTH_MISSING_TOOL:-}" = "dig" ] || ! command -v dig >/dev/null 2>&1; then
+    vpskit_dns_health_emit_unknown_missing_tool "${host}" "dig"
+    return 0
   fi
 
   system_dns="$(vpskit_dns_health_resolve_a "${host}")"

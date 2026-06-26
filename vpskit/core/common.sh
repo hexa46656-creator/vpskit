@@ -49,3 +49,76 @@ vpskit_dry_run_log() {
   mkdir -p "$(dirname "${output_path}")"
   printf '%s\n' "${message}" >>"${output_path}"
 }
+
+vpskit_shell_quote() {
+  printf '%q' "$1"
+}
+
+vpskit_system_path() {
+  local path="$1"
+  local root_dir="${VPSKIT_TEST_ROOT_DIR:-}"
+
+  if [ -n "${root_dir}" ] && [ "${path#/}" != "${path}" ]; then
+    printf '%s%s\n' "${root_dir}" "${path}"
+    return 0
+  fi
+
+  printf '%s\n' "${path}"
+}
+
+vpskit_default_subscription_file() {
+  if [ -n "${VPSKIT_SUBSCRIPTION_FILE:-}" ]; then
+    printf '%s\n' "${VPSKIT_SUBSCRIPTION_FILE}"
+    return 0
+  fi
+
+  printf '%s/vless-reality.txt\n' "${VPSKIT_SUBSCRIPTION_DIR:-/var/lib/vpskit}"
+}
+
+vpskit_run_mutation() {
+  if vpskit_is_dry_run; then
+    vpskit_dry_run_log "RUN $*"
+    return 0
+  fi
+
+  if [ -n "${VPSKIT_TEST_COMMAND_LOG:-}" ]; then
+    mkdir -p "$(dirname "${VPSKIT_TEST_COMMAND_LOG}")"
+    printf 'RUN %s\n' "$*" >>"${VPSKIT_TEST_COMMAND_LOG}"
+    return 0
+  fi
+
+  "$@"
+}
+
+vpskit_write_managed_file() {
+  local path="$1"
+  local mode="$2"
+  local content="$3"
+  local target_path
+  local backup_path=""
+  local quoted_target
+  local quoted_backup
+
+  target_path="$(vpskit_system_path "${path}")"
+
+  if vpskit_is_dry_run; then
+    vpskit_dry_run_log "WRITE ${path}"
+    vpskit_dry_run_log "${content}"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "${target_path}")"
+  quoted_target="$(vpskit_shell_quote "${target_path}")"
+
+  if [ -e "${target_path}" ]; then
+    backup_path="$(mktemp)"
+    cp -a "${target_path}" "${backup_path}"
+    quoted_backup="$(vpskit_shell_quote "${backup_path}")"
+    vpskit_rollback_add "cp -a ${quoted_backup} ${quoted_target}; rm -f ${quoted_backup}" || return 1
+  else
+    vpskit_rollback_add "rm -f ${quoted_target}" || return 1
+  fi
+
+  printf '%s\n' "${content}" >"${target_path}"
+  chmod "${mode}" "${target_path}"
+}

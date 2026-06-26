@@ -21,6 +21,12 @@ source "${VPSKIT_ROOT}/core/transaction.sh"
 # shellcheck source=../core/safety.sh
 source "${VPSKIT_ROOT}/core/safety.sh"
 # shellcheck disable=SC1091
+# shellcheck source=../install/hardening.sh
+source "${VPSKIT_ROOT}/install/hardening.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../install/vless_reality.sh
+source "${VPSKIT_ROOT}/install/vless_reality.sh"
+# shellcheck disable=SC1091
 # shellcheck source=../network/dns_health.sh
 source "${VPSKIT_ROOT}/network/dns_health.sh"
 # shellcheck disable=SC1091
@@ -45,8 +51,8 @@ source "${VPSKIT_ROOT}/subscription/shadowrocket_repair.sh"
 vpskit_cli_version() {
   cat <<'EOF'
 VPSKit v2.0.0-beta
-Available commands: version, status, doctor, sub, fix
-Available components: CLI, DNS health, TCP probe, fallback report, Shadowrocket repair
+Available commands: version, status, doctor, sub, fix, install
+Available components: CLI, hardening installer, VLESS Reality installer, DNS health, TCP probe, fallback report, Shadowrocket repair
 EOF
 }
 
@@ -62,20 +68,22 @@ vpskit_cli_status() {
 }
 
 vpskit_cli_doctor() {
-  local dns_target="${VPSKIT_DOCTOR_DNS_TARGET:-localhost}"
+  local dns_target="${VPSKIT_DOCTOR_DNS_TARGET:-www.cloudflare.com}"
   local tcp_host="${VPSKIT_DOCTOR_TCP_HOST:-127.0.0.1}"
   local tcp_port="${VPSKIT_DOCTOR_TCP_PORT:-443}"
-  local subscription_file="${VPSKIT_SUBSCRIPTION_FILE:-}"
+  local subscription_file
   local dns_state
   local tcp_state
 
   vpskit_system_inspection_summary
+  vpskit_cli_tcp_443_status
   dns_state="$(vpskit_dns_health "${dns_target}" || true)"
   tcp_state="$(vpskit_tcp_probe "${tcp_host}" "${tcp_port}" || true)"
   printf 'DNS_HEALTH=%s\n' "${dns_state}"
   printf 'TCP_PROBE=%s\n' "${tcp_state}"
 
-  if [ -n "${subscription_file}" ] && [ -f "${subscription_file}" ]; then
+  subscription_file="$(vpskit_default_subscription_file)"
+  if [ -f "${subscription_file}" ]; then
     printf 'SUBSCRIPTION_FILE=present\n'
   else
     printf 'SUBSCRIPTION_FILE=missing\n'
@@ -86,12 +94,47 @@ vpskit_cli_doctor() {
   vpskit_hysteria2_doctor
 }
 
+vpskit_cli_tcp_443_status() {
+  local config_path
+
+  config_path="$(vpskit_system_path "${VPSKIT_XRAY_CONFIG_PATH:-/usr/local/etc/xray/config.json}")"
+
+  if [ "${VPSKIT_TEST_TCP_443_OWNER:-}" = "xray" ] && [ -f "${config_path}" ] && [ -f "$(vpskit_default_subscription_file)" ]; then
+    printf 'TCP_443_STATUS=in_use_expected service=xray\n'
+    return 0
+  fi
+
+  if command -v ss >/dev/null 2>&1 && [ -f "${config_path}" ] && [ -f "$(vpskit_default_subscription_file)" ]; then
+    if ss -H -ltnp 'sport = :443' 2>/dev/null | grep -q 'xray'; then
+      printf 'TCP_443_STATUS=in_use_expected service=xray\n'
+      return 0
+    fi
+  fi
+
+  printf 'TCP_443_STATUS=unverified\n'
+}
+
 vpskit_cli_sub() {
-  local subscription_file="${VPSKIT_SUBSCRIPTION_FILE:-}"
+  local subcommand="${1:-show}"
+  local subscription_file
   local output_dir="${VPSKIT_OUTPUT_DIR:-${VPSKIT_ROOT}/output}"
   local default_output="${output_dir}/final_links.txt"
 
-  if [ -n "${subscription_file}" ] && [ -f "${subscription_file}" ]; then
+  case "${subcommand}" in
+    show)
+      ;;
+    "" | help | --help | -h)
+      printf 'Usage: vpskit sub show\n'
+      return 0
+      ;;
+    *)
+      vpskit_die "unknown sub command: ${subcommand}"
+      return 1
+      ;;
+  esac
+
+  subscription_file="$(vpskit_default_subscription_file)"
+  if [ -f "${subscription_file}" ]; then
     cat "${subscription_file}"
     return 0
   fi
@@ -125,6 +168,30 @@ vpskit_cli_fix() {
   vpskit_fallback_report "${dns_state}" "${tcp_state}"
 }
 
+vpskit_cli_install() {
+  local target="${1:-}"
+
+  case "${target}" in
+    hardening)
+      vpskit_with_lock vpskit_install_hardening
+      ;;
+    vless-reality)
+      vpskit_with_lock vpskit_install_vless_reality
+      ;;
+    "" | help | --help | -h)
+      cat <<'EOF'
+Usage:
+  vpskit install hardening
+  vpskit install vless-reality
+EOF
+      ;;
+    *)
+      vpskit_die "unknown install target: ${target}"
+      return 1
+      ;;
+  esac
+}
+
 vpskit_cli_usage() {
   cat <<'EOF'
 Usage:
@@ -132,7 +199,10 @@ Usage:
   vpskit status
   vpskit doctor
   vpskit sub
+  vpskit sub show
   vpskit fix
+  vpskit install hardening
+  vpskit install vless-reality
 EOF
 }
 
@@ -151,10 +221,13 @@ main() {
       vpskit_cli_doctor
       ;;
     sub)
-      vpskit_cli_sub
+      vpskit_cli_sub "$@"
       ;;
     fix)
       vpskit_cli_fix "$@"
+      ;;
+    install)
+      vpskit_cli_install "$@"
       ;;
     "" | help | --help | -h)
       vpskit_cli_usage
