@@ -298,7 +298,7 @@ vpskit_ufw_status() {
   fi
 
   vpskit_ufw_available || return 1
-  ufw status 2>/dev/null | sed -n '1p'
+  ufw status verbose 2>/dev/null || ufw status numbered 2>/dev/null || ufw status 2>/dev/null
 }
 
 vpskit_sshd_config_path() {

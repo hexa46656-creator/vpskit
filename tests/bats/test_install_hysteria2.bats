@@ -16,6 +16,8 @@ prepare_hysteria2_env() {
   export VPSKIT_TEST_OS_ID=ubuntu
   export VPSKIT_TEST_OS_VERSION_ID=24.04
   export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_SERVICE_EXISTS="hysteria-server.service hysteria-server"
+  export VPSKIT_TEST_SERVICE_ACTIVE="hysteria-server.service hysteria-server"
   export VPSKIT_TEST_PUBLIC_IP=203.0.113.10
   export VPSKIT_TEST_HYSTERIA2_PASSWORD=test-password
   export VPSKIT_TEST_HYSTERIA2_PIN_SHA256=test-pin
@@ -48,12 +50,29 @@ PY
   [[ "$output" == *"HYSTERIA2_SERVICE=active"* ]]
   [[ "$output" == *"HYSTERIA2_CONFIG=/etc/hysteria/config.yaml"* ]]
   [[ "$output" == *"HYSTERIA2_SUBSCRIPTION_FILE=/var/lib/vpskit/hysteria2.yaml"* ]]
+  [[ "$(cat "${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/config.yaml")" == *$'auth:\n  type: password\n  password: test-password'* ]]
+  [[ "$(cat "${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/config.yaml")" != *"auth: test-password"* ]]
+  [[ "$(cat "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/hysteria2.yaml")" == *"auth: test-password"* ]]
+  [[ "$(cat "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/hysteria2.yaml")" != *"type: password"* ]]
   [ -s "${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/config.yaml" ]
   [ -s "${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/server.crt" ]
   [ -s "${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/server.key" ]
   [ -s "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/hysteria2.yaml" ]
   [ -s "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/hysteria2.env" ]
   assert_file_ends_with_single_newline "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/hysteria2.yaml"
+}
+
+@test "hysteria2 install fails when the service stays inactive after restart" {
+  prepare_hysteria2_env
+  export VPSKIT_TEST_SERVICE_ACTIVE="other.service"
+  export VPSKIT_TEST_UFW_STATUS="Status: inactive"
+
+  run vpskit_install_hysteria2
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"HYSTERIA2_INSTALL=fail reason=service_inactive"* ]]
+  [[ "$output" == *"HYSTERIA2_SERVICE=fail state=inactive"* ]]
+  [[ "$output" != *"HYSTERIA2_INSTALL=pass"* ]]
 }
 
 @test "hysteria2 install allows active UFW and records the rule" {

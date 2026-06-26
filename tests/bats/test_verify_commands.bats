@@ -39,7 +39,7 @@ prepare_verify_hysteria2_rootfs() {
   mkdir -p "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin" "${VPSKIT_TEST_ROOT_DIR}/etc/hysteria"
   printf '#!/usr/bin/env bash\nexit 0\n' >"${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/hysteria"
   chmod +x "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/hysteria"
-  printf 'listen: :443\nauth: test-password\ntls:\n  cert: /etc/hysteria/server.crt\n  key: /etc/hysteria/server.key\n' >"${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/config.yaml"
+  printf 'listen: :443\nauth:\n  type: password\n  password: test-password\ntls:\n  cert: /etc/hysteria/server.crt\n  key: /etc/hysteria/server.key\n' >"${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/config.yaml"
   printf 'TEST-HYSTERIA2 PRIVATE\n' >"${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/server.key"
   printf 'TEST-HYSTERIA2 CERT\n' >"${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/server.crt"
   printf 'server: 203.0.113.10:443\nauth: test-password\ntls:\n  sni: 203.0.113.10\n  pinSHA256: test-pin\n' >"${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/hysteria2.yaml"

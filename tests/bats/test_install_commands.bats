@@ -55,6 +55,8 @@ setup() {
   export VPSKIT_TEST_PUBLIC_IP=203.0.113.10
   export VPSKIT_TEST_HYSTERIA2_PASSWORD=test-password
   export VPSKIT_TEST_HYSTERIA2_PIN_SHA256=test-pin
+  export VPSKIT_TEST_SERVICE_EXISTS="hysteria-server.service hysteria-server"
+  export VPSKIT_TEST_SERVICE_ACTIVE="hysteria-server.service hysteria-server"
   export VPSKIT_TEST_COMMAND_LOG="${BATS_TEST_TMPDIR}/commands.log"
   export VPSKIT_LOCK_PATH="${BATS_TEST_TMPDIR}/vpskit.lock"
   export VPSKIT_LOCK_METADATA_PATH="${BATS_TEST_TMPDIR}/vpskit.lock.meta"
@@ -71,4 +73,32 @@ setup() {
   [[ "$output" == *"HYSTERIA2_SUBSCRIPTION_FILE=/var/lib/vpskit/hysteria2.yaml"* ]]
   [ -s "${VPSKIT_TEST_ROOT_DIR}/etc/hysteria/config.yaml" ]
   [ -s "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/hysteria2.yaml" ]
+}
+
+@test "install hysteria2 fails when the service is inactive" {
+  export VPSKIT_TEST_MODE=1
+  export VPSKIT_TEST_EUID=0
+  export VPSKIT_TEST_OS_ID=ubuntu
+  export VPSKIT_TEST_OS_VERSION_ID=24.04
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_ROOT_DIR="${BATS_TEST_TMPDIR}/rootfs"
+  export VPSKIT_TEST_PUBLIC_IP=203.0.113.10
+  export VPSKIT_TEST_HYSTERIA2_PASSWORD=test-password
+  export VPSKIT_TEST_HYSTERIA2_PIN_SHA256=test-pin
+  export VPSKIT_TEST_SERVICE_EXISTS="hysteria-server.service hysteria-server"
+  export VPSKIT_TEST_SERVICE_ACTIVE="other.service"
+  export VPSKIT_TEST_COMMAND_LOG="${BATS_TEST_TMPDIR}/commands.log"
+  export VPSKIT_LOCK_PATH="${BATS_TEST_TMPDIR}/vpskit.lock"
+  export VPSKIT_LOCK_METADATA_PATH="${BATS_TEST_TMPDIR}/vpskit.lock.meta"
+  export VPSKIT_TEST_UDP_PORT_IN_USE=""
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_STATUS="Status: inactive"
+  mkdir -p "${VPSKIT_TEST_ROOT_DIR}"
+
+  run bash "${CLI_PATH}" install hysteria2
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"HYSTERIA2_INSTALL=fail reason=service_inactive"* ]]
+  [[ "$output" == *"HYSTERIA2_SERVICE=fail state=inactive"* ]]
+  [[ "$output" != *"HYSTERIA2_INSTALL=pass"* ]]
 }

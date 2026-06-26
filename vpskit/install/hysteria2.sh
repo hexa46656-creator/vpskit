@@ -125,11 +125,7 @@ vpskit_hysteria2_ufw_status() {
     return 0
   fi
 
-  if ! vpskit_ufw_available; then
-    return 1
-  fi
-
-  ufw status 2>/dev/null | sed -n '1p'
+  vpskit_ufw_status
 }
 
 vpskit_hysteria2_ufw_allows_443_udp() {
@@ -379,6 +375,48 @@ tls:
 EOF
 }
 
+vpskit_hysteria2_service_state() {
+  if ! vpskit_systemd_available; then
+    printf 'unknown\n'
+    return 0
+  fi
+
+  if vpskit_service_active "$(vpskit_hysteria2_service_name)" || vpskit_service_active "$(vpskit_hysteria2_service_unit_name).service"; then
+    printf 'active\n'
+    return 0
+  fi
+
+  if vpskit_service_exists "$(vpskit_hysteria2_service_name)" || vpskit_service_exists "$(vpskit_hysteria2_service_unit_name).service"; then
+    printf 'inactive\n'
+    return 0
+  fi
+
+  printf 'missing\n'
+}
+
+vpskit_hysteria2_wait_for_service_active() {
+  local attempts=0
+  local max_attempts=5
+  local state="unknown"
+
+  while [ "${attempts}" -lt "${max_attempts}" ]; do
+    state="$(vpskit_hysteria2_service_state)"
+    if [ "${state}" = "active" ]; then
+      printf '%s\n' "${state}"
+      return 0
+    fi
+
+    attempts=$((attempts + 1))
+    if vpskit_is_test_mode || [ "${attempts}" -ge "${max_attempts}" ]; then
+      break
+    fi
+    sleep 1
+  done
+
+  printf '%s\n' "${state}"
+  return 1
+}
+
 vpskit_hysteria2_render_metadata() {
   local server_ip="$1"
   local password="$2"
@@ -437,6 +475,7 @@ vpskit_install_hysteria2() {
   local client_config
   local metadata
   local service_unit
+  local service_state
   local ufw_status=""
   local ufw_summary=""
   local status=0
@@ -537,26 +576,32 @@ vpskit_install_hysteria2() {
           printf 'RUN systemctl daemon-reload\n'
           printf 'RUN systemctl enable %s\n' "$(vpskit_hysteria2_service_name)"
           printf 'RUN systemctl restart %s\n' "$(vpskit_hysteria2_service_name)"
-          printf 'RUN systemctl is-active --quiet %s\n' "$(vpskit_hysteria2_service_name)"
         } >>"${VPSKIT_TEST_COMMAND_LOG}"
       else
         vpskit_dry_run_log "RUN systemctl daemon-reload"
         vpskit_dry_run_log "RUN systemctl enable $(vpskit_hysteria2_service_name)"
         vpskit_dry_run_log "RUN systemctl restart $(vpskit_hysteria2_service_name)"
-        vpskit_dry_run_log "RUN systemctl is-active --quiet $(vpskit_hysteria2_service_name)"
       fi
     elif [ -n "${VPSKIT_TEST_COMMAND_LOG:-}" ]; then
       {
         printf 'RUN systemctl daemon-reload\n'
         printf 'RUN systemctl enable %s\n' "$(vpskit_hysteria2_service_name)"
         printf 'RUN systemctl restart %s\n' "$(vpskit_hysteria2_service_name)"
-        printf 'RUN systemctl is-active --quiet %s\n' "$(vpskit_hysteria2_service_name)"
       } >>"${VPSKIT_TEST_COMMAND_LOG}"
     else
       vpskit_run_mutation systemctl daemon-reload || status=$?
       vpskit_run_mutation systemctl enable "$(vpskit_hysteria2_service_name)" || status=$?
       vpskit_run_mutation systemctl restart "$(vpskit_hysteria2_service_name)" || status=$?
-      vpskit_run_mutation systemctl is-active --quiet "$(vpskit_hysteria2_service_name)" || status=$?
+    fi
+  fi
+
+  if [ "${status}" -eq 0 ]; then
+    service_state="$(vpskit_hysteria2_wait_for_service_active)" || status=$?
+    if [ "${status}" -ne 0 ]; then
+      vpskit_transaction_abort
+      printf 'HYSTERIA2_INSTALL=fail reason=service_inactive\n'
+      printf 'HYSTERIA2_SERVICE=fail state=%s\n' "${service_state}"
+      return 1
     fi
   fi
 
