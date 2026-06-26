@@ -1,0 +1,41 @@
+{
+  "name": "VPSKit",
+  "version": "v2.0.0-beta",
+  "branch": "release/v2.0.0-beta",
+  "releaseType": "beta",
+  "packageModel": "commercial cli toolkit",
+  "included": [
+    "installer-facing cli",
+    "status",
+    "doctor",
+    "sub",
+    "fix",
+    "shadowrocket repair",
+    "dns health",
+    "tcp probe",
+    "fallback report",
+    "safe diagnostics"
+  ],
+  "excluded": [
+    "autonomous ai control plane",
+    "self-modifying systems",
+    "formal/meta/Godel/epistemic/observer layers",
+    "full saas auto-payment",
+    "production billing automation"
+  ],
+  "files": [
+    "vpskit/cli/vpskit.sh",
+    "vpskit/network/dns_health.sh",
+    "vpskit/network/tcp_probe.sh",
+    "vpskit/network/fallback_report.sh",
+    "vpskit/subscription/shadowrocket_repair.sh",
+    "docs/install-guide.en.md",
+    "docs/install-guide.zh.md",
+    "docs/troubleshooting.en.md",
+    "docs/troubleshooting.zh.md",
+    "release/v2.0.0-beta-scope.md",
+    "release/commercial-delivery.md",
+    "release/github-push-checklist.md",
+    "release/known-test-status.md"
+  ]
+}
