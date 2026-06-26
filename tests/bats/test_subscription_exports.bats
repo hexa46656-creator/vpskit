@@ -8,12 +8,17 @@ setup() {
 }
 
 prepare_subscription_file() {
+  prepare_subscription_file_with_uri \
+    'vless://11111111-1111-4111-8111-111111111111@154.26.184.229:443?encryption=none&security=reality&sni=www.cloudflare.com&fp=chrome&pbk=public-test-key&sid=abcdef1234567890&type=tcp&flow=xtls-rprx-vision#VPSKit-Reality'
+}
+
+prepare_subscription_file_with_uri() {
+  local uri="$1"
+
   export VPSKIT_SUBSCRIPTION_DIR="${BATS_TEST_TMPDIR}/vpskit"
   mkdir -p "${VPSKIT_SUBSCRIPTION_DIR}"
   export VPSKIT_SUBSCRIPTION_FILE="${VPSKIT_SUBSCRIPTION_DIR}/vless-reality.txt"
-  printf '%s\n' \
-    'vless://11111111-1111-4111-8111-111111111111@154.26.184.229:443?encryption=none&security=reality&sni=www.cloudflare.com&fp=chrome&pbk=public-test-key&sid=abcdef1234567890&type=tcp&flow=xtls-rprx-vision#VPSKit-Reality' \
-    >"${VPSKIT_SUBSCRIPTION_FILE}"
+  printf '%s\n' "${uri}" >"${VPSKIT_SUBSCRIPTION_FILE}"
 }
 
 test_subscription_uri="vless://11111111-1111-4111-8111-111111111111@154.26.184.229:443?encryption=none&security=reality&sni=www.cloudflare.com&fp=chrome&pbk=public-test-key&sid=abcdef1234567890&type=tcp&flow=xtls-rprx-vision#VPSKit-Reality"
@@ -36,6 +41,8 @@ PY
   [[ "$output" == *"vpskit sub show"* ]]
   [[ "$output" == *"vpskit sub formats"* ]]
   [[ "$output" == *"vpskit sub export <format>"* ]]
+  [[ "$output" == *"vpskit sub export <format> --output <path>"* ]]
+  [[ "$output" == *"vpskit sub validate"* ]]
 }
 
 @test "sub formats prints supported formats line" {
@@ -81,6 +88,116 @@ PY
 
   [ "$status" -eq 0 ]
   [ "$output" = "${expected_base64}" ]
+}
+
+@test "sub export raw --output writes file and prints status only" {
+  prepare_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/raw.txt"
+
+  run bash "${CLI_PATH}" sub export raw --output "${output_file}"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUB_EXPORT=pass format=raw output=${output_file}" ]
+  [ "$(tr -d '\n' < "${output_file}")" = "${test_subscription_uri}" ]
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
+@test "sub export base64 --output writes file and prints status only" {
+  prepare_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/base64.txt"
+  local expected_base64
+  expected_base64="$(python3 -c 'import base64,sys; print(base64.b64encode(sys.argv[1].encode()).decode())' "${test_subscription_uri}")"
+
+  run bash "${CLI_PATH}" sub export base64 --output "${output_file}"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUB_EXPORT=pass format=base64 output=${output_file}" ]
+  [ "$(tr -d '\n' < "${output_file}")" = "${expected_base64}" ]
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
+@test "sub export clash-meta --output writes yaml file" {
+  prepare_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/clash-meta.yaml"
+
+  run bash "${CLI_PATH}" sub export clash-meta --output "${output_file}"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUB_EXPORT=pass format=clash-meta output=${output_file}" ]
+  [[ "$(cat "${output_file}")" == *"proxies:"* ]]
+  [[ "$(cat "${output_file}")" == *"client-fingerprint: chrome"* ]]
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
+@test "sub export sing-box --output writes json file" {
+  prepare_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/sing-box.json"
+
+  run bash "${CLI_PATH}" sub export sing-box --output "${output_file}"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUB_EXPORT=pass format=sing-box output=${output_file}" ]
+  printf '%s' "$(cat "${output_file}")" | python3 -c '
+import json
+import sys
+
+data = json.load(sys.stdin)
+outbound = data["outbounds"][0]
+
+assert outbound["type"] == "vless"
+assert outbound["tag"] == "VPSKit-Reality"
+'
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
+@test "sub export -o alias works" {
+  prepare_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/alias.txt"
+
+  run bash "${CLI_PATH}" sub export raw -o "${output_file}"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUB_EXPORT=pass format=raw output=${output_file}" ]
+  assert_file_ends_with_single_newline "${output_file}"
+}
+
+@test "sub export fails clearly when output path is missing" {
+  prepare_subscription_file
+
+  run bash "${CLI_PATH}" sub export raw --output
+
+  [ "$status" -eq 1 ]
+  [ "$output" = "SUB_EXPORT=fail reason=missing_output_path" ]
+}
+
+@test "sub export fails clearly when output parent directory is missing" {
+  prepare_subscription_file
+  local output_file="${BATS_TEST_TMPDIR}/missing-dir/export.txt"
+
+  run bash "${CLI_PATH}" sub export raw --output "${output_file}"
+
+  [ "$status" -eq 1 ]
+  [ "$output" = "SUB_EXPORT=fail format=raw reason=parent_directory_missing output=${output_file}" ]
+}
+
+@test "sub export fails clearly when output path is a directory" {
+  prepare_subscription_file
+  local output_dir="${BATS_TEST_TMPDIR}/export-dir"
+  mkdir -p "${output_dir}"
+
+  run bash "${CLI_PATH}" sub export raw --output "${output_dir}"
+
+  [ "$status" -eq 1 ]
+  [ "$output" = "SUB_EXPORT=fail format=raw reason=output_path_is_directory output=${output_dir}" ]
+}
+
+@test "sub export fails clearly for unsupported format" {
+  prepare_subscription_file
+
+  run bash "${CLI_PATH}" sub export unknown
+
+  [ "$status" -eq 1 ]
+  [ "$output" = "SUB_EXPORT=fail reason=unsupported_format format=unknown" ]
 }
 
 @test "sub export clash-meta includes parsed reality fields" {
@@ -201,4 +318,57 @@ PY
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"malformed VLESS Reality URI"* ]]
+}
+
+@test "sub validate passes with valid vless reality uri" {
+  prepare_subscription_file
+
+  run bash "${CLI_PATH}" sub validate
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"SUB_URI=pass scheme=vless"* ]]
+  [[ "$output" == *"SUB_UUID=pass"* ]]
+  [[ "$output" == *"SUB_SERVER=pass value=154.26.184.229"* ]]
+  [[ "$output" == *"SUB_PORT=pass value=443"* ]]
+  [[ "$output" == *"SUB_SECURITY=pass value=reality"* ]]
+  [[ "$output" == *"SUB_SNI=pass value=www.cloudflare.com"* ]]
+  [[ "$output" == *"SUB_FP=pass value=chrome"* ]]
+  [[ "$output" == *"SUB_PBK=pass"* ]]
+  [[ "$output" == *"SUB_SID=pass"* ]]
+  [[ "$output" == *"SUB_TYPE=pass value=tcp"* ]]
+  [[ "$output" == *"SUB_FLOW=pass value=xtls-rprx-vision"* ]]
+  [[ "$output" == *"SUB_VALIDATE=pass"* ]]
+}
+
+@test "sub validate fails clearly for missing pbk" {
+  prepare_subscription_file_with_uri \
+    'vless://11111111-1111-4111-8111-111111111111@154.26.184.229:443?encryption=none&security=reality&sni=www.cloudflare.com&fp=chrome&sid=abcdef1234567890&type=tcp&flow=xtls-rprx-vision#VPSKit-Reality'
+
+  run bash "${CLI_PATH}" sub validate
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"SUB_PBK=fail reason=missing"* ]]
+  [[ "$output" == *"SUB_VALIDATE=fail"* ]]
+}
+
+@test "sub validate fails clearly for non-vless uri" {
+  prepare_subscription_file_with_uri \
+    'http://example.com:443?security=reality&sni=www.cloudflare.com&fp=chrome&pbk=public-test-key&sid=abcdef1234567890&type=tcp&flow=xtls-rprx-vision'
+
+  run bash "${CLI_PATH}" sub validate
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"SUB_URI=fail reason=unsupported_scheme value=http"* ]]
+  [[ "$output" == *"SUB_VALIDATE=fail"* ]]
+}
+
+@test "sub validate fails clearly for non-numeric port" {
+  prepare_subscription_file_with_uri \
+    'vless://11111111-1111-4111-8111-111111111111@example.com:not-a-port?encryption=none&security=reality&sni=www.cloudflare.com&fp=chrome&pbk=public-test-key&sid=abcdef1234567890&type=tcp&flow=xtls-rprx-vision#VPSKit-Reality'
+
+  run bash "${CLI_PATH}" sub validate
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"SUB_PORT=fail reason=non_numeric value=not-a-port"* ]]
+  [[ "$output" == *"SUB_VALIDATE=fail"* ]]
 }

@@ -2,11 +2,12 @@
 
 VPSKit is a practical VPS deployment and repair toolkit.
 
-Current beta capability: `v0.4.0-beta` supports:
+Current beta capability: `v0.4.1-beta` supports:
 
 - VPS hardening for Ubuntu 24.04 LTS
 - Xray VLESS Reality over TCP 443 with `xtls-rprx-vision`
 - subscription export for Shadowrocket, v2rayNG, Clash Meta, sing-box, and base64 subscription bundles
+- client export to file for existing VLESS Reality subscriptions
 - post-install verification commands for managed SSH user and VLESS Reality state
 
 Quick start:
@@ -25,6 +26,9 @@ CLI commands:
 - `sub show`
 - `sub formats`
 - `sub export <format>`
+- `sub export <format> --output <path>`
+- `sub export <format> -o <path>`
+- `sub validate`
 - `fix`
 - `install hardening`
 - `install vless-reality`
@@ -78,9 +82,24 @@ Client export:
 - sing-box: `bash vpskit/cli/vpskit.sh sub export sing-box`
 - Base64 generic subscription: `bash vpskit/cli/vpskit.sh sub export base64`
 
-v0.4.0-beta only exports the existing VLESS Reality config.
-It does not add Hysteria2 or Trojan.
-QR code generation is not included yet.
+Client export to file:
+
+- Shadowrocket and v2rayNG keep the existing URI text export format.
+- Clash Meta writes YAML files that can be imported directly by Clash Meta-compatible clients.
+- sing-box writes JSON files that can be imported directly by sing-box.
+- Base64 writes a generic subscription bundle for clients that expect encoded subscription text.
+- Validate the current VLESS Reality subscription before exporting with `bash vpskit/cli/vpskit.sh sub validate`.
+
+Examples:
+
+```bash
+bash vpskit/cli/vpskit.sh sub export clash-meta --output /tmp/vpskit-clash.yaml
+bash vpskit/cli/vpskit.sh sub export sing-box --output /tmp/vpskit-sing-box.json
+bash vpskit/cli/vpskit.sh sub validate
+```
+
+`v0.4.1-beta` only improves client export UX for the existing VLESS Reality subscription.
+It does not add Hysteria2, Trojan, QR code generation, SaaS, Telegram Bot, PayPal, or Web UI.
 
 Troubleshooting:
 
@@ -118,6 +137,7 @@ Release notes:
 - See [release/v0.3.0-beta-notes.md](release/v0.3.0-beta-notes.md)
 - See [release/v0.3.0-beta-test-report.md](release/v0.3.0-beta-test-report.md)
 - See [release/v0.4.0-beta-notes.md](release/v0.4.0-beta-notes.md)
+- See [release/v0.4.1-beta-notes.md](release/v0.4.1-beta-notes.md)
 - See [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - See [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
 
@@ -125,11 +145,12 @@ Release notes:
 
 VPSKit 是一个实用的 VPS 部署与修复工具包。
 
-当前 beta 能力：`v0.4.0-beta` 支持：
+当前 beta 能力：`v0.4.1-beta` 支持：
 
 - Ubuntu 24.04 LTS VPS 安全加固
 - 基于 TCP 443 和 `xtls-rprx-vision` 的 Xray VLESS Reality
 - Shadowrocket、v2rayNG、Clash Meta、sing-box 和 base64 订阅导出
+- 现有 VLESS Reality 订阅的文件导出体验优化
 - 用于受管理 SSH 用户和 VLESS Reality 状态的安装后验证命令
 
 快速开始：
@@ -148,6 +169,9 @@ CLI 命令：
 - `sub show`
 - `sub formats`
 - `sub export <format>`
+- `sub export <format> --output <path>`
+- `sub export <format> -o <path>`
+- `sub validate`
 - `fix`
 - `install hardening`
 - `install vless-reality`
@@ -201,9 +225,24 @@ Shadowrocket 使用：
 - sing-box：`bash vpskit/cli/vpskit.sh sub export sing-box`
 - 通用 base64 订阅：`bash vpskit/cli/vpskit.sh sub export base64`
 
-v0.4.0-beta 只导出现有的 VLESS Reality 配置。
-它不会新增 Hysteria2 或 Trojan。
-目前不包含二维码生成。
+文件导出体验：
+
+- Shadowrocket 和 v2rayNG 继续使用现有的 URI 文本导出格式。
+- Clash Meta 可直接导出可导入的 YAML 文件。
+- sing-box 可直接导出可导入的 JSON 文件。
+- Base64 可导出通用的编码订阅文本。
+- 导出前可先运行 `bash vpskit/cli/vpskit.sh sub validate` 检查当前 VLESS Reality 订阅。
+
+示例：
+
+```bash
+bash vpskit/cli/vpskit.sh sub export clash-meta --output /tmp/vpskit-clash.yaml
+bash vpskit/cli/vpskit.sh sub export sing-box --output /tmp/vpskit-sing-box.json
+bash vpskit/cli/vpskit.sh sub validate
+```
+
+`v0.4.1-beta` 只改进现有 VLESS Reality 订阅的客户端导出体验。
+它不会新增 Hysteria2、Trojan、二维码生成、SaaS、Telegram Bot、PayPal 或 Web UI。
 
 故障排查：
 
@@ -241,5 +280,6 @@ v0.4.0-beta 只导出现有的 VLESS Reality 配置。
 - 参见 [release/v0.3.0-beta-notes.md](release/v0.3.0-beta-notes.md)
 - 参见 [release/v0.3.0-beta-test-report.md](release/v0.3.0-beta-test-report.md)
 - 参见 [release/v0.4.0-beta-notes.md](release/v0.4.0-beta-notes.md)
+- 参见 [release/v0.4.1-beta-notes.md](release/v0.4.1-beta-notes.md)
 - 参见 [release/v2.0.0-beta-scope.md](release/v2.0.0-beta-scope.md)
 - 参见 [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)

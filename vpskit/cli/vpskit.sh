@@ -56,14 +56,14 @@ source "${VPSKIT_ROOT}/verify/checks.sh"
 
 vpskit_cli_version() {
   cat <<'EOF'
-VPSKit v0.4.0-beta
+VPSKit v0.4.1-beta
 Available commands: version, status, doctor, sub, fix, install, verify
 Available components: CLI, hardening installer, VLESS Reality installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
 EOF
 }
 
 vpskit_cli_status() {
-  printf 'VERSION=VPSKit v0.4.0-beta\n'
+  printf 'VERSION=VPSKit v0.4.1-beta\n'
   vpskit_system_inspection_summary
   printf 'CLI=available\n'
   printf 'SUBSCRIPTION_REPAIR=available\n'
@@ -124,6 +124,8 @@ vpskit_cli_tcp_443_status() {
 vpskit_cli_sub() {
   local subcommand="${1:-show}"
 
+  shift || true
+
   case "${subcommand}" in
     show)
       local subscription_file
@@ -150,8 +152,16 @@ vpskit_cli_sub() {
       return 0
       ;;
     export)
-      vpskit_cli_sub_export "${2:-}"
-      return $?
+      if vpskit_cli_sub_export "$@"; then
+        return 0
+      fi
+      return 1
+      ;;
+    validate)
+      if vpskit_cli_sub_validate; then
+        return 0
+      fi
+      return 1
       ;;
     "" | help | --help | -h)
       cat <<'EOF'
@@ -159,6 +169,9 @@ Usage:
   vpskit sub show
   vpskit sub formats
   vpskit sub export <format>
+  vpskit sub export <format> --output <path>
+  vpskit sub export <format> -o <path>
+  vpskit sub validate
 EOF
       return 0
       ;;
@@ -174,6 +187,9 @@ vpskit_cli_sub_export() {
   local subscription_file
   local uri
   local rendered
+  local output_path=""
+
+  shift || true
 
   case "${format}" in
     raw | shadowrocket | v2rayng | base64 | clash-meta | sing-box)
@@ -187,14 +203,35 @@ Usage:
   vpskit sub export v2rayng
   vpskit sub export clash-meta
   vpskit sub export sing-box
+  vpskit sub export <format> --output <path>
+  vpskit sub export <format> -o <path>
 EOF
       return 0
       ;;
     *)
-      vpskit_die "unknown sub export format: ${format}"
+      printf 'SUB_EXPORT=fail reason=unsupported_format format=%s\n' "${format}"
       return 1
       ;;
   esac
+
+  while [ "$#" -gt 0 ]; do
+    case "${1:-}" in
+      --output | -o)
+        shift || true
+        if [ -z "${1:-}" ]; then
+          printf 'SUB_EXPORT=fail reason=missing_output_path\n'
+          return 1
+        fi
+        output_path="${1}"
+        ;;
+      *)
+        printf 'SUB_EXPORT=fail reason=unexpected_argument value=%s\n' "${1}"
+        return 1
+        ;;
+    esac
+
+    shift || true
+  done
 
   if subscription_file="$(vpskit_subscription_resolve_file)"; then
     :
@@ -205,6 +242,13 @@ EOF
 
   case "${format}" in
     raw | shadowrocket | v2rayng)
+      if [ -n "${output_path}" ]; then
+        if vpskit_subscription_write_output_file "${format}" "${output_path}" "$(<"${subscription_file}")"; then
+          return 0
+        fi
+        return 1
+      fi
+
       vpskit_subscription_print_file "${subscription_file}"
       return 0
       ;;
@@ -224,7 +268,39 @@ EOF
     return 1
   fi
 
+  if [ -n "${output_path}" ]; then
+    if vpskit_subscription_write_output_file "${format}" "${output_path}" "${rendered}"; then
+      return 0
+    fi
+    return 1
+  fi
+
   printf '%s\n' "${rendered}"
+}
+
+vpskit_cli_sub_validate() {
+  local subscription_file
+  local uri
+
+  if subscription_file="$(vpskit_subscription_resolve_file)"; then
+    :
+  else
+    printf '%s\n' "${subscription_file}"
+    return 1
+  fi
+
+  if uri="$(vpskit_subscription_first_uri "${subscription_file}")"; then
+    :
+  else
+    printf '%s\n' "${uri}"
+    return 1
+  fi
+
+  if vpskit_subscription_validate "${uri}"; then
+    return 0
+  fi
+
+  return 1
 }
 
 vpskit_cli_fix() {
@@ -295,7 +371,7 @@ EOF
   esac
 }
 
-  vpskit_cli_usage() {
+vpskit_cli_usage() {
   cat <<'EOF'
 Usage:
   vpskit version
@@ -305,6 +381,9 @@ Usage:
   vpskit sub show
   vpskit sub formats
   vpskit sub export <format>
+  vpskit sub export <format> --output <path>
+  vpskit sub export <format> -o <path>
+  vpskit sub validate
   vpskit fix
   vpskit install hardening
   vpskit install vless-reality
