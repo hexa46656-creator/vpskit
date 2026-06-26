@@ -8,3 +8,6 @@ __pycache__/
 .pytest_cache/
 .venv/
 .env
+release/*.log
+release/*.tmp
+release/*.bak
