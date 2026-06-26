@@ -44,6 +44,111 @@ vpskit_trojan_service_name() {
   printf '%s\n' "xray"
 }
 
+vpskit_trojan_xray_runtime_user() {
+  local user=""
+
+  if [ -n "${VPSKIT_TEST_XRAY_USER:-}" ]; then
+    printf '%s\n' "${VPSKIT_TEST_XRAY_USER}"
+    return 0
+  fi
+
+  user="$(systemctl show xray.service -p User --value 2>/dev/null || true)"
+  if [ -z "${user}" ]; then
+    user="root"
+  fi
+
+  printf '%s\n' "${user}"
+}
+
+vpskit_trojan_xray_runtime_group() {
+  local user="$1"
+  local group=""
+
+  if [ -n "${VPSKIT_TEST_XRAY_GROUP:-}" ]; then
+    printf '%s\n' "${VPSKIT_TEST_XRAY_GROUP}"
+    return 0
+  fi
+
+  group="$(systemctl show xray.service -p Group --value 2>/dev/null || true)"
+  if [ -z "${group}" ]; then
+    if [ "${user}" = "nobody" ] && getent group nogroup >/dev/null 2>&1; then
+      group="nogroup"
+    else
+      group="$(id -gn "${user}" 2>/dev/null || true)"
+    fi
+  fi
+
+  if [ -z "${group}" ]; then
+    group="root"
+  fi
+
+  printf '%s\n' "${group}"
+}
+
+vpskit_trojan_apply_tls_permissions() {
+  local config_dir
+  local xray_user="${1:-}"
+  local xray_group="${2:-}"
+
+  config_dir="$(vpskit_trojan_config_dir)"
+
+  if [ -z "${xray_user}" ]; then
+    xray_user="$(vpskit_trojan_xray_runtime_user)"
+  fi
+
+  if [ -z "${xray_group}" ]; then
+    xray_group="$(vpskit_trojan_xray_runtime_group "${xray_user}")"
+  fi
+
+  vpskit_run_mutation chown -R "${xray_user}:${xray_group}" "${config_dir}" || return 1
+  vpskit_run_mutation chmod 750 "${config_dir}" || return 1
+  vpskit_run_mutation chmod 644 "$(vpskit_trojan_cert_path)" || return 1
+  vpskit_run_mutation chmod 600 "$(vpskit_trojan_key_path)" || return 1
+}
+
+vpskit_trojan_validate_candidate_xray_config() {
+  local xray_bin="$1"
+  local candidate_config_path="$2"
+
+  if [ -z "${xray_bin}" ] || [ ! -x "${xray_bin}" ]; then
+    return 1
+  fi
+
+  "${xray_bin}" run -test -config "${candidate_config_path}"
+}
+
+vpskit_trojan_rollback_install_failure() {
+  local xray_service_state=""
+  local tcp_443_owner=""
+  local rollback_status=0
+
+  vpskit_transaction_abort || rollback_status=$?
+
+  if [ "${rollback_status}" -eq 0 ]; then
+    vpskit_run_mutation systemctl restart xray || rollback_status=$?
+  fi
+
+  if [ "${rollback_status}" -eq 0 ]; then
+    if ! vpskit_is_test_mode; then
+      sleep 1
+    fi
+
+    xray_service_state="$(vpskit_vless_xray_service_summary)"
+    tcp_443_owner="$(vpskit_trojan_tcp_443_owner)"
+    if [ "${xray_service_state}" != "active" ] || [ "${tcp_443_owner}" != "xray" ]; then
+      rollback_status=1
+    fi
+  fi
+
+  if [ "${rollback_status}" -eq 0 ]; then
+    printf 'XRAY_ROLLBACK=pass reason=trojan_install_failed\n'
+  else
+    printf 'XRAY_ROLLBACK=fail reason=restore_failed\n'
+  fi
+
+  return "${rollback_status}"
+}
+
 vpskit_trojan_server_state_value() {
   local key="$1"
   local subscription_file
@@ -599,6 +704,9 @@ vpskit_install_trojan() {
   local rendered_config=""
   local rendered_yaml=""
   local rendered_env=""
+  local candidate_config_path=""
+  local xray_user=""
+  local xray_group=""
 
   vpskit_require_root || return 1
   vpskit_require_ubuntu_2404 || return 1
@@ -681,6 +789,27 @@ vpskit_install_trojan() {
     return 1
   fi
 
+  if ! xray_user="$(vpskit_trojan_xray_runtime_user)"; then
+    printf 'TROJAN_INSTALL=fail reason=xray_runtime_user_unavailable\n'
+    vpskit_transaction_abort
+    vpskit_release_lock
+    return 1
+  fi
+
+  if ! xray_group="$(vpskit_trojan_xray_runtime_group "${xray_user}")"; then
+    printf 'TROJAN_INSTALL=fail reason=xray_runtime_group_unavailable\n'
+    vpskit_transaction_abort
+    vpskit_release_lock
+    return 1
+  fi
+
+  if ! vpskit_trojan_apply_tls_permissions "${xray_user}" "${xray_group}"; then
+    printf 'TROJAN_INSTALL=fail reason=trojan_tls_permission_update_failed\n'
+    vpskit_transaction_abort
+    vpskit_release_lock
+    return 1
+  fi
+
   rendered_config="$(
     vpskit_trojan_xray_config_merge "${password}"
   )" || {
@@ -689,6 +818,18 @@ vpskit_install_trojan() {
     vpskit_release_lock
     return 1
   }
+
+  candidate_config_path="$(mktemp)"
+  printf '%s\n' "${rendered_config}" >"${candidate_config_path}"
+  if ! vpskit_trojan_validate_candidate_xray_config "${xray_bin}" "${candidate_config_path}"; then
+    rm -f "${candidate_config_path}"
+    printf 'TROJAN_INSTALL=fail reason=xray_config_invalid\n'
+    vpskit_transaction_abort
+    vpskit_release_lock
+    return 1
+  fi
+  rm -f "${candidate_config_path}"
+  candidate_config_path=""
 
   rendered_yaml="$(vpskit_trojan_render_subscription_yaml "${server_address}" "${password}" "${sni}" "${allow_insecure}")"
   rendered_env="$(vpskit_trojan_render_env_file "${server_address}" "${password}" "${sni}" "${allow_insecure}")"
@@ -712,20 +853,14 @@ vpskit_install_trojan() {
     return 1
   }
 
-  vpskit_run_mutation "${xray_bin}" run -test -config "${system_config_path}" || status=$?
-  if [ "${status}" -ne 0 ]; then
-    printf 'TROJAN_INSTALL=fail reason=xray_config_invalid\n'
-    vpskit_transaction_abort
-    vpskit_release_lock
-    return 1
-  fi
-
   vpskit_run_mutation systemctl daemon-reload || status=$?
   vpskit_run_mutation systemctl enable xray || status=$?
   vpskit_run_mutation systemctl restart xray || status=$?
   if [ "${status}" -ne 0 ]; then
     printf 'TROJAN_INSTALL=fail reason=xray_restart_failed\n'
-    vpskit_transaction_abort
+    if ! vpskit_trojan_rollback_install_failure; then
+      :
+    fi
     vpskit_release_lock
     return 1
   fi
@@ -747,7 +882,9 @@ vpskit_install_trojan() {
   if [ "${xray_service_state}" != "active" ]; then
     printf 'TROJAN_INSTALL=fail reason=service_inactive\n'
     printf 'TROJAN_SERVICE=fail state=%s\n' "${xray_service_state}"
-    vpskit_transaction_abort
+    if ! vpskit_trojan_rollback_install_failure; then
+      :
+    fi
     vpskit_release_lock
     return 1
   fi
@@ -755,7 +892,9 @@ vpskit_install_trojan() {
   if [ "${tcp_443_owner}" != "xray" ]; then
     printf 'TROJAN_INSTALL=fail reason=tcp_443_not_preserved\n'
     printf 'TCP_443_LISTENER=fail expected=xray actual=%s\n' "${tcp_443_owner:-none}"
-    vpskit_transaction_abort
+    if ! vpskit_trojan_rollback_install_failure; then
+      :
+    fi
     vpskit_release_lock
     return 1
   fi
@@ -763,7 +902,9 @@ vpskit_install_trojan() {
   if [ "${tcp_owner}" != "xray" ]; then
     printf 'TROJAN_INSTALL=fail reason=tcp_8443_not_bound\n'
     printf 'TCP_8443_LISTENER=fail expected=xray actual=%s\n' "${tcp_owner:-none}"
-    vpskit_transaction_abort
+    if ! vpskit_trojan_rollback_install_failure; then
+      :
+    fi
     vpskit_release_lock
     return 1
   fi
@@ -781,7 +922,9 @@ vpskit_install_trojan() {
       vpskit_run_mutation ufw reload || status=$?
       if [ "${status}" -ne 0 ]; then
         printf 'TROJAN_INSTALL=fail reason=ufw_update_failed\n'
-        vpskit_transaction_abort
+        if ! vpskit_trojan_rollback_install_failure; then
+          :
+        fi
         vpskit_release_lock
         return 1
       fi
@@ -793,13 +936,20 @@ vpskit_install_trojan() {
 
   if [ "${xray_service_state}" != "active" ] || [ "${tcp_443_owner}" != "xray" ] || [ "${tcp_owner}" != "xray" ] || [ ! -s "${system_subscription_file}" ]; then
     printf 'TROJAN_INSTALL=fail reason=post_validation_failed\n'
-    vpskit_transaction_abort
+    if ! vpskit_trojan_rollback_install_failure; then
+      :
+    fi
     vpskit_release_lock
     return 1
   fi
 
+  if [ -n "${candidate_config_path}" ]; then
+    rm -f "${candidate_config_path}"
+  fi
+
   vpskit_transaction_commit
   vpskit_release_lock
+  printf 'VLESS_REALITY_PRESERVED=pass tcp_443=bound service=xray\n'
   printf 'TROJAN_INSTALL=pass\n'
   printf 'TROJAN_PORT=%s/tcp\n' "$(vpskit_trojan_port)"
   printf 'TROJAN_SERVICE=%s service=xray\n' "${xray_service_state}"

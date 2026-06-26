@@ -187,6 +187,7 @@ EOF
   run bash "${CLI_PATH}" install trojan
 
   [ "$status" -eq 0 ]
+  [[ "$output" == *"VLESS_REALITY_PRESERVED=pass tcp_443=bound service=xray"* ]]
   [[ "$output" == *"TROJAN_INSTALL=pass"* ]]
   [[ "$output" == *"TROJAN_PORT=8443/tcp"* ]]
   [[ "$output" == *"TROJAN_SERVICE=active service=xray"* ]]
@@ -198,6 +199,101 @@ EOF
   grep -q '"protocol": "vless"' "${VPSKIT_TEST_ROOT_DIR}${VPSKIT_XRAY_CONFIG_PATH}"
   [ -s "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/trojan.yaml" ]
   [ -s "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/trojan.env" ]
+}
+
+@test "install trojan resolves nobody runtime ownership and restrictive tls modes" {
+  prepare_trojan_env
+  export VPSKIT_TEST_XRAY_USER=nobody
+  export VPSKIT_TEST_XRAY_GROUP=nogroup
+
+  run bash "${CLI_PATH}" install trojan
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"VLESS_REALITY_PRESERVED=pass tcp_443=bound service=xray"* ]]
+  [[ "$(cat "${VPSKIT_TEST_COMMAND_LOG}")" == *"RUN chown -R nobody:nogroup /etc/vpskit/trojan"* ]]
+  [[ "$(cat "${VPSKIT_TEST_COMMAND_LOG}")" == *"RUN chmod 750 /etc/vpskit/trojan"* ]]
+  [[ "$(cat "${VPSKIT_TEST_COMMAND_LOG}")" == *"RUN chmod 644 /etc/vpskit/trojan/server.crt"* ]]
+  [[ "$(cat "${VPSKIT_TEST_COMMAND_LOG}")" == *"RUN chmod 600 /etc/vpskit/trojan/server.key"* ]]
+  python3 - "${VPSKIT_TEST_ROOT_DIR}/etc/vpskit/trojan/server.key" <<'PY'
+from pathlib import Path
+import sys
+
+mode = Path(sys.argv[1]).stat().st_mode & 0o777
+assert mode == 0o600, oct(mode)
+PY
+  python3 - "${VPSKIT_TEST_ROOT_DIR}/etc/vpskit/trojan/server.crt" <<'PY'
+from pathlib import Path
+import sys
+
+mode = Path(sys.argv[1]).stat().st_mode & 0o777
+assert mode == 0o644, oct(mode)
+PY
+  [ -r "${VPSKIT_TEST_ROOT_DIR}/etc/vpskit/trojan/server.crt" ]
+}
+
+@test "install trojan validates candidate config before live replacement" {
+  prepare_trojan_env
+  export VPSKIT_TEST_XRAY_LOG="${BATS_TEST_TMPDIR}/xray.log"
+  cat >"${VPSKIT_TEST_XRAY_BIN}" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+log_file="${VPSKIT_TEST_XRAY_LOG}"
+live_config="${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json"
+config_path=""
+
+printf '%s\n' "$*" >>"${log_file}"
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -config)
+      shift
+      config_path="${1:-}"
+      ;;
+  esac
+  shift || true
+done
+
+if [ -z "${config_path}" ]; then
+  exit 1
+fi
+
+if grep -q '"protocol": "trojan"' "${live_config}"; then
+  printf 'LIVE_CONFIG_REPLACED_EARLY\n' >>"${log_file}"
+  exit 3
+fi
+
+if [ "${config_path}" = "${live_config}" ]; then
+  printf 'LIVE_CONFIG_USED_FOR_VALIDATION\n' >>"${log_file}"
+  exit 4
+fi
+
+exit 0
+EOF
+  chmod +x "${VPSKIT_TEST_XRAY_BIN}"
+
+  run bash "${CLI_PATH}" install trojan
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"TROJAN_INSTALL=pass"* ]]
+  [[ "$output" != *"LIVE_CONFIG_REPLACED_EARLY"* ]]
+  [[ "$output" != *"LIVE_CONFIG_USED_FOR_VALIDATION"* ]]
+  [[ "$(cat "${VPSKIT_TEST_XRAY_LOG}")" == *"run -test -config"* ]]
+}
+
+@test "install trojan rolls back old config when post-restart validation fails" {
+  prepare_trojan_env
+  local original_config
+  original_config="$(cat "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json")"
+  export VPSKIT_TEST_TCP_8443_OWNER_AFTER_RESTART=not_bound
+
+  run bash "${CLI_PATH}" install trojan
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"TROJAN_INSTALL=fail reason=tcp_8443_not_bound"* ]]
+  [[ "$output" == *"XRAY_ROLLBACK=pass reason=trojan_install_failed"* ]]
+  [[ "$output" != *"TROJAN_INSTALL=pass"* ]]
+  [ "$(cat "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json")" = "${original_config}" ]
 }
 
 @test "install trojan is root only" {
