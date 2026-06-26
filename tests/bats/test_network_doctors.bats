@@ -226,6 +226,251 @@ setup() {
   [[ "$output" == *"HYSTERIA2_SUBSCRIPTION_FILE=missing"* ]]
 }
 
+@test "doctor reports trojan installed active bound" {
+  export VPSKIT_TEST_OS_ID=ubuntu
+  export VPSKIT_TEST_OS_VERSION_ID=24.04
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_DNS_HEALTH_RESULT='DNS_HEALTH=ok host=www.cloudflare.com system=1.1.1.1 cloudflare=1.1.1.1 google=1.1.1.1'
+  export VPSKIT_TEST_TCP_PROBE_RESULT=open
+  export VPSKIT_TEST_ROOT_DIR="${BATS_TEST_TMPDIR}/rootfs"
+  mkdir -p "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin" "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray" "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  chmod +x "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  cat >"${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json" <<'EOF'
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "tag": "vless-reality-vision",
+      "listen": "0.0.0.0",
+      "port": 443,
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "11111111-1111-4111-8111-111111111111",
+            "flow": "xtls-rprx-vision",
+            "email": "default@vpskit"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "www.cloudflare.com:443",
+          "xver": 0,
+          "serverNames": [
+            "www.cloudflare.com"
+          ],
+          "privateKey": "private-test-key",
+          "shortIds": [
+            "abcdef1234567890"
+          ]
+        }
+      }
+    },
+    {
+      "tag": "trojan-tcp-8443",
+      "listen": "0.0.0.0",
+      "port": 8443,
+      "protocol": "trojan",
+      "settings": {
+        "clients": [
+          {
+            "password": "test-password",
+            "email": "default@vpskit"
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "tls",
+        "tlsSettings": {
+          "certificates": [
+            {
+              "certificateFile": "/etc/vpskit/trojan/server.crt",
+              "keyFile": "/etc/vpskit/trojan/server.key"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "direct",
+      "protocol": "freedom"
+    }
+  ]
+}
+EOF
+  printf 'server: 203.0.113.10\nport: 8443\npassword: test-password\nsni: 203.0.113.10\nallowInsecure: 1\n' >"${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/trojan.yaml"
+  export VPSKIT_TEST_XRAY_BIN="${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  export VPSKIT_TEST_SERVICE_EXISTS="xray xray.service"
+  export VPSKIT_TEST_SERVICE_ACTIVE="xray xray.service"
+  export VPSKIT_TEST_TCP_443_OWNER=xray
+  export VPSKIT_TEST_TCP_8443_OWNER=xray
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n8443/tcp ALLOW IN Anywhere'
+
+  run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"TROJAN_PORT=8443/tcp"* ]]
+  [[ "$output" == *"TROJAN_INSTALLED=yes"* ]]
+  [[ "$output" == *"TROJAN_BINARY=present"* ]]
+  [[ "$output" == *"TROJAN_CONFIG=present"* ]]
+  [[ "$output" == *"TROJAN_SERVICE=active"* ]]
+  [[ "$output" == *"TROJAN_TCP_8443=bound"* ]]
+  [[ "$output" == *"TROJAN_SUBSCRIPTION_FILE=present"* ]]
+  [[ "$output" == *"UFW_8443_TCP=pass status=active rule=present"* ]]
+}
+
+@test "doctor reports trojan not installed" {
+  export VPSKIT_TEST_OS_ID=ubuntu
+  export VPSKIT_TEST_OS_VERSION_ID=24.04
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_DNS_HEALTH_RESULT='DNS_HEALTH=ok host=www.cloudflare.com system=1.1.1.1 cloudflare=1.1.1.1 google=1.1.1.1'
+  export VPSKIT_TEST_TCP_PROBE_RESULT=open
+  export VPSKIT_TEST_SERVICE_EXISTS=""
+  export VPSKIT_TEST_SERVICE_ACTIVE=""
+  export VPSKIT_TEST_TCP_443_OWNER=not_bound
+  export VPSKIT_TEST_TCP_8443_OWNER=not_bound
+  export VPSKIT_TEST_UFW_STATUS="Status: inactive"
+
+  run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"TROJAN_INSTALLED=no"* ]]
+  [[ "$output" == *"TROJAN_BINARY=missing"* ]]
+  [[ "$output" == *"TROJAN_CONFIG=missing"* ]]
+  [[ "$output" == *"TROJAN_SUBSCRIPTION_FILE=missing"* ]]
+}
+
+@test "doctor reports trojan missing subscription file" {
+  export VPSKIT_TEST_OS_ID=ubuntu
+  export VPSKIT_TEST_OS_VERSION_ID=24.04
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_DNS_HEALTH_RESULT='DNS_HEALTH=ok host=www.cloudflare.com system=1.1.1.1 cloudflare=1.1.1.1 google=1.1.1.1'
+  export VPSKIT_TEST_TCP_PROBE_RESULT=open
+  export VPSKIT_TEST_ROOT_DIR="${BATS_TEST_TMPDIR}/rootfs"
+  mkdir -p "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin" "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  chmod +x "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  printf '{"inbounds":[{"tag":"trojan-tcp-8443","listen":"0.0.0.0","port":8443,"protocol":"trojan","settings":{"clients":[{"password":"test-password","email":"default@vpskit"}]}}]}' >"${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json"
+  export VPSKIT_TEST_XRAY_BIN="${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  export VPSKIT_TEST_SERVICE_EXISTS="xray xray.service"
+  export VPSKIT_TEST_SERVICE_ACTIVE="xray xray.service"
+  export VPSKIT_TEST_TCP_443_OWNER=xray
+  export VPSKIT_TEST_TCP_8443_OWNER=xray
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n8443/tcp ALLOW IN Anywhere'
+
+  run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"TROJAN_INSTALLED=no"* ]]
+  [[ "$output" == *"TROJAN_SUBSCRIPTION_FILE=missing"* ]]
+}
+
+@test "doctor reports trojan ufw active rule missing" {
+  export VPSKIT_TEST_OS_ID=ubuntu
+  export VPSKIT_TEST_OS_VERSION_ID=24.04
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_DNS_HEALTH_RESULT='DNS_HEALTH=ok host=www.cloudflare.com system=1.1.1.1 cloudflare=1.1.1.1 google=1.1.1.1'
+  export VPSKIT_TEST_TCP_PROBE_RESULT=open
+  export VPSKIT_TEST_ROOT_DIR="${BATS_TEST_TMPDIR}/rootfs"
+  mkdir -p "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin" "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray" "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  chmod +x "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  cat >"${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json" <<'EOF'
+{
+  "inbounds": [
+    {
+      "tag": "trojan-tcp-8443",
+      "listen": "0.0.0.0",
+      "port": 8443,
+      "protocol": "trojan",
+      "settings": {
+        "clients": [
+          {
+            "password": "test-password",
+            "email": "default@vpskit"
+          }
+        ]
+      }
+    }
+  ]
+}
+EOF
+  printf 'server: 203.0.113.10\nport: 8443\npassword: test-password\nsni: 203.0.113.10\nallowInsecure: 1\n' >"${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/trojan.yaml"
+  export VPSKIT_TEST_XRAY_BIN="${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  export VPSKIT_TEST_SERVICE_EXISTS="xray xray.service"
+  export VPSKIT_TEST_SERVICE_ACTIVE="xray xray.service"
+  export VPSKIT_TEST_TCP_443_OWNER=xray
+  export VPSKIT_TEST_TCP_8443_OWNER=xray
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n22/tcp ALLOW IN Anywhere'
+
+  run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"UFW_8443_TCP=fail status=active rule=missing"* ]]
+}
+
+@test "doctor reports trojan inactive and owned by other" {
+  export VPSKIT_TEST_OS_ID=ubuntu
+  export VPSKIT_TEST_OS_VERSION_ID=24.04
+  export VPSKIT_TEST_SYSTEMD_AVAILABLE=yes
+  export VPSKIT_TEST_UFW_AVAILABLE=yes
+  export VPSKIT_TEST_DNS_HEALTH_RESULT='DNS_HEALTH=ok host=www.cloudflare.com system=1.1.1.1 cloudflare=1.1.1.1 google=1.1.1.1'
+  export VPSKIT_TEST_TCP_PROBE_RESULT=open
+  export VPSKIT_TEST_ROOT_DIR="${BATS_TEST_TMPDIR}/rootfs"
+  mkdir -p "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin" "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray" "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  chmod +x "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  cat >"${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json" <<'EOF'
+{
+  "inbounds": [
+    {
+      "tag": "trojan-tcp-8443",
+      "listen": "0.0.0.0",
+      "port": 8443,
+      "protocol": "trojan",
+      "settings": {
+        "clients": [
+          {
+            "password": "test-password",
+            "email": "default@vpskit"
+          }
+        ]
+      }
+    }
+  ]
+}
+EOF
+  printf 'server: 203.0.113.10\nport: 8443\npassword: test-password\nsni: 203.0.113.10\nallowInsecure: 1\n' >"${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/trojan.yaml"
+  export VPSKIT_TEST_XRAY_BIN="${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  export VPSKIT_TEST_SERVICE_EXISTS="xray xray.service"
+  export VPSKIT_TEST_SERVICE_ACTIVE="other.service"
+  export VPSKIT_TEST_TCP_8443_OWNER=nginx
+  export VPSKIT_TEST_UFW_STATUS="Status: inactive"
+
+  run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"TROJAN_INSTALLED=yes"* ]]
+  [[ "$output" == *"TROJAN_SERVICE=inactive"* ]]
+  [[ "$output" == *"TROJAN_TCP_8443=owned_by_other"* ]]
+  [[ "$output" == *"UFW_8443_TCP=skip status=inactive reason=not_enforced"* ]]
+}
+
 @test "reality doctor marks risky cdn targets" {
   local dns_line='DNS_HEALTH=ok host=www.microsoft.com system=13.107.246.45 cloudflare=13.107.246.45 google=13.107.246.45'
 
@@ -266,14 +511,46 @@ setup() {
   export VPSKIT_TEST_TCP_PROBE_RESULT=open
   export VPSKIT_REALITY_SERVER_NAME=www.cloudflare.com
   export VPSKIT_REALITY_DEST=www.cloudflare.com:443
-  export VPSKIT_TROJAN_DOMAIN=trojan.example.com
-  export VPSKIT_PUBLIC_IPV4=1.1.1.1
+  export VPSKIT_TEST_ROOT_DIR="${BATS_TEST_TMPDIR}/rootfs"
+  mkdir -p "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin" "${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray" "${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  chmod +x "${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  cat >"${VPSKIT_TEST_ROOT_DIR}/usr/local/etc/xray/config.json" <<'EOF'
+{
+  "inbounds": [
+    {
+      "tag": "trojan-tcp-8443",
+      "listen": "0.0.0.0",
+      "port": 8443,
+      "protocol": "trojan",
+      "settings": {
+        "clients": [
+          {
+            "password": "test-password",
+            "email": "default@vpskit"
+          }
+        ]
+      }
+    }
+  ]
+}
+EOF
+  printf 'server: 203.0.113.10\nport: 8443\npassword: test-password\nsni: 203.0.113.10\nallowInsecure: 1\n' >"${VPSKIT_TEST_ROOT_DIR}/var/lib/vpskit/trojan.yaml"
+  export VPSKIT_TEST_XRAY_BIN="${VPSKIT_TEST_ROOT_DIR}/usr/local/bin/xray"
+  export VPSKIT_TEST_SERVICE_EXISTS="xray xray.service"
+  export VPSKIT_TEST_SERVICE_ACTIVE="xray xray.service"
+  export VPSKIT_TEST_TCP_443_OWNER=xray
+  export VPSKIT_TEST_TCP_8443_OWNER=xray
+  export VPSKIT_TEST_UFW_STATUS=$'Status: active\n8443/tcp ALLOW IN Anywhere'
   export VPSKIT_HYSTERIA2_PORT=443
   export VPSKIT_HYSTERIA2_MASQUERADE_HOST=www.bing.com
 
   run bash "${PROJECT_ROOT}/vpskit/cli/vpskit.sh" doctor
 
   [ "$status" -eq 0 ]
+  [[ "$output" == *"TROJAN_PORT=8443/tcp"* ]]
+  [[ "$output" == *"TROJAN_INSTALLED=yes"* ]]
+  [[ "$output" == *"TROJAN_TCP_8443=bound"* ]]
   [ "$(tr -d '
 ' < "${sentinel}")" = "before" ]
 }

@@ -2,49 +2,124 @@
 
 VPSKIT_NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
-# shellcheck source=../core/common.sh
-source "${VPSKIT_NETWORK_DIR}/../core/common.sh"
-# shellcheck disable=SC1091
-# shellcheck source=dns_health.sh
-source "${VPSKIT_NETWORK_DIR}/dns_health.sh"
+# shellcheck source=../install/trojan.sh
+source "${VPSKIT_NETWORK_DIR}/../install/trojan.sh"
 
-vpskit_trojan_doctor() {
-  local domain="${VPSKIT_TROJAN_DOMAIN:-}"
-  local public_ipv4="${VPSKIT_PUBLIC_IPV4:-}"
-  local dns_line
-  local system_dns
-  local cloudflare_dns
-  local google_dns
-  local mismatch=0
+vpskit_trojan_binary_state() {
+  local bin_path
 
-  if [ -z "${domain}" ]; then
-    printf 'TROJAN_DOMAIN=missing\n'
-    printf 'TROJAN_DNS_CHECK=skipped reason=no_domain\n'
+  bin_path="$(vpskit_vless_xray_bin 2>/dev/null || true)"
+  if [ -n "${bin_path}" ] && [ -x "${bin_path}" ]; then
+    printf 'present\n'
+  else
+    printf 'missing\n'
+  fi
+}
+
+vpskit_trojan_config_state() {
+  vpskit_trojan_xray_config_state
+}
+
+vpskit_trojan_service_state() {
+  if ! vpskit_systemd_available; then
+    printf 'unknown\n'
     return 0
   fi
 
-  printf 'TROJAN_DOMAIN=%s\n' "${domain}"
-  dns_line="$(vpskit_dns_health "${domain}" || true)"
-  if [ -n "${dns_line}" ]; then
-    printf '%s\n' "${dns_line}"
+  if vpskit_service_active "$(vpskit_trojan_service_name)" || vpskit_service_active "$(vpskit_trojan_service_name).service"; then
+    printf 'active\n'
+    return 0
   fi
 
-  if [ -n "${public_ipv4}" ]; then
-    system_dns="$(vpskit_dns_health_field_value "${dns_line}" system 2>/dev/null || true)"
-    cloudflare_dns="$(vpskit_dns_health_field_value "${dns_line}" cloudflare 2>/dev/null || true)"
-    google_dns="$(vpskit_dns_health_field_value "${dns_line}" google 2>/dev/null || true)"
+  if vpskit_service_exists "$(vpskit_trojan_service_name)" || vpskit_service_exists "$(vpskit_trojan_service_name).service"; then
+    printf 'inactive\n'
+    return 0
+  fi
 
-    if [ -z "${system_dns}" ] || [ -z "${cloudflare_dns}" ] || [ -z "${google_dns}" ]; then
-      mismatch=1
-    elif [ "${system_dns}" != "${public_ipv4}" ] || [ "${cloudflare_dns}" != "${public_ipv4}" ] || [ "${google_dns}" != "${public_ipv4}" ]; then
-      mismatch=1
-    fi
+  printf 'missing\n'
+}
 
-    printf 'TROJAN_PUBLIC_IPV4=%s\n' "${public_ipv4}"
-    if [ "${mismatch}" -eq 1 ]; then
-      printf 'TROJAN_DNS_PUBLIC_IPV4=warn reason=resolver_mismatch\n'
+vpskit_trojan_tcp_state() {
+  local owner
+
+  owner="$(vpskit_trojan_tcp_8443_owner)"
+  case "${owner}" in
+    xray)
+      printf 'bound\n'
+      ;;
+    not_bound)
+      printf 'not_bound\n'
+      ;;
+    unknown | "")
+      printf 'unknown\n'
+      ;;
+    *)
+      printf 'owned_by_other\n'
+      ;;
+  esac
+}
+
+vpskit_trojan_subscription_state() {
+  local subscription_file
+
+  subscription_file="$(vpskit_system_path "$(vpskit_trojan_subscription_file)")"
+  if [ -s "${subscription_file}" ]; then
+    printf 'present\n'
+  else
+    printf 'missing\n'
+  fi
+}
+
+vpskit_trojan_doctor_ufw_state() {
+  local ufw_status
+
+  ufw_status="$(vpskit_trojan_ufw_status 2>/dev/null || true)"
+  if ! vpskit_ufw_available && [ -z "${ufw_status}" ]; then
+    printf 'UFW_8443_TCP=skip reason=ufw_unavailable\n'
+    return 0
+  fi
+
+  if printf '%s\n' "${ufw_status}" | grep -qi 'inactive'; then
+    printf 'UFW_8443_TCP=skip status=inactive reason=not_enforced\n'
+    return 0
+  fi
+
+  if printf '%s\n' "${ufw_status}" | grep -qi 'active'; then
+    if vpskit_trojan_ufw_allows_8443_tcp "${ufw_status}"; then
+      printf 'UFW_8443_TCP=pass status=active rule=present\n'
     else
-      printf 'TROJAN_DNS_PUBLIC_IPV4=ok\n'
+      printf 'UFW_8443_TCP=fail status=active rule=missing\n'
     fi
+    return 0
   fi
+
+  printf 'UFW_8443_TCP=skip status=unknown\n'
+}
+
+vpskit_trojan_doctor() {
+  local installed="no"
+  local binary_state
+  local config_state
+  local service_state
+  local tcp_state
+  local subscription_state
+
+  binary_state="$(vpskit_trojan_binary_state)"
+  config_state="$(vpskit_trojan_config_state)"
+  service_state="$(vpskit_trojan_service_state)"
+  tcp_state="$(vpskit_trojan_tcp_state)"
+  subscription_state="$(vpskit_trojan_subscription_state)"
+
+  if [ "${binary_state}" = "present" ] && [ "${config_state}" = "present" ] && [ "${subscription_state}" = "present" ]; then
+    installed="yes"
+  fi
+
+  printf 'TROJAN_PORT=%s/tcp\n' "$(vpskit_trojan_port)"
+  printf 'TROJAN_INSTALLED=%s\n' "${installed}"
+  printf 'TROJAN_BINARY=%s\n' "${binary_state}"
+  printf 'TROJAN_CONFIG=%s\n' "${config_state}"
+  printf 'TROJAN_SERVICE=%s\n' "${service_state}"
+  printf 'TROJAN_TCP_8443=%s\n' "${tcp_state}"
+  printf 'TROJAN_SUBSCRIPTION_FILE=%s\n' "${subscription_state}"
+  vpskit_trojan_doctor_ufw_state
 }

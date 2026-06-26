@@ -30,6 +30,9 @@ source "${VPSKIT_ROOT}/install/vless_reality.sh"
 # shellcheck source=../install/hysteria2.sh
 source "${VPSKIT_ROOT}/install/hysteria2.sh"
 # shellcheck disable=SC1091
+# shellcheck source=../install/trojan.sh
+source "${VPSKIT_ROOT}/install/trojan.sh"
+# shellcheck disable=SC1091
 # shellcheck source=../network/dns_health.sh
 source "${VPSKIT_ROOT}/network/dns_health.sh"
 # shellcheck disable=SC1091
@@ -59,14 +62,14 @@ source "${VPSKIT_ROOT}/verify/checks.sh"
 
 vpskit_cli_version() {
   cat <<'EOF'
-VPSKit v0.5.0-beta
+VPSKit v0.6.0-beta
 Available commands: version, status, doctor, sub, fix, install, verify
-Available components: CLI, hardening installer, VLESS Reality installer, Hysteria2 installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
+Available components: CLI, hardening installer, VLESS Reality installer, Hysteria2 installer, Trojan installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
 EOF
 }
 
 vpskit_cli_status() {
-  printf 'VERSION=VPSKit v0.5.0-beta\n'
+  printf 'VERSION=VPSKit v0.6.0-beta\n'
   vpskit_system_inspection_summary
   printf 'CLI=available\n'
   printf 'SUBSCRIPTION_REPAIR=available\n'
@@ -74,6 +77,7 @@ vpskit_cli_status() {
   printf 'DNS_HEALTH=available\n'
   printf 'TCP_PROBE=available\n'
   printf 'FALLBACK_REPORT=available\n'
+  printf 'TROJAN=available\n'
   printf 'HYSTERIA2=available\n'
   printf 'SAFETY=simulation-only\n'
 }
@@ -176,6 +180,7 @@ Usage:
   vpskit sub export <format> --output <path>
   vpskit sub export <format> -o <path>
   vpskit sub export hysteria2
+  vpskit sub export trojan
   vpskit sub validate
 EOF
       return 0
@@ -197,7 +202,7 @@ vpskit_cli_sub_export() {
   shift || true
 
   case "${format}" in
-    raw | shadowrocket | v2rayng | base64 | clash-meta | sing-box | hysteria2)
+    raw | shadowrocket | v2rayng | base64 | clash-meta | sing-box | hysteria2 | trojan)
       ;;
     "" | help | --help | -h)
       cat <<'EOF'
@@ -209,6 +214,7 @@ Usage:
   vpskit sub export clash-meta
   vpskit sub export sing-box
   vpskit sub export hysteria2
+  vpskit sub export trojan
   vpskit sub export <format> --output <path>
   vpskit sub export <format> -o <path>
 EOF
@@ -256,6 +262,20 @@ EOF
 
     printf '%s\n' "${rendered}"
     return 0
+  fi
+
+  if [ "${format}" = "trojan" ]; then
+    if [ -n "${output_path}" ]; then
+      if vpskit_trojan_subscription_export --output "${output_path}"; then
+        return 0
+      fi
+      return 1
+    fi
+
+    if vpskit_trojan_subscription_export; then
+      return 0
+    fi
+    return 1
   fi
 
   if subscription_file="$(vpskit_subscription_resolve_file)"; then
@@ -361,12 +381,16 @@ vpskit_cli_install() {
     hysteria2)
       vpskit_with_lock vpskit_install_hysteria2
       ;;
+    trojan)
+      vpskit_with_lock vpskit_install_trojan
+      ;;
     "" | help | --help | -h)
       cat <<'EOF'
 Usage:
   vpskit install hardening
   vpskit install vless-reality
   vpskit install hysteria2
+  vpskit install trojan
 EOF
       ;;
     *)
@@ -389,12 +413,16 @@ vpskit_cli_verify() {
     hysteria2)
       vpskit_verify_hysteria2
       ;;
+    trojan)
+      vpskit_verify_trojan
+      ;;
     "" | help | --help | -h)
       cat <<'EOF'
 Usage:
   vpskit verify ssh-user
   vpskit verify vless-reality
   vpskit verify hysteria2
+  vpskit verify trojan
 EOF
       ;;
     *)
@@ -417,14 +445,17 @@ Usage:
   vpskit sub export <format> --output <path>
   vpskit sub export <format> -o <path>
   vpskit sub export hysteria2
+  vpskit sub export trojan
   vpskit sub validate
   vpskit fix
   vpskit install hardening
   vpskit install vless-reality
   vpskit install hysteria2
+  vpskit install trojan
   vpskit verify ssh-user
   vpskit verify vless-reality
   vpskit verify hysteria2
+  vpskit verify trojan
 EOF
 }
 
