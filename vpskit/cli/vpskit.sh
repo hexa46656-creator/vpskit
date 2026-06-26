@@ -205,7 +205,7 @@ EOF
 
   case "${format}" in
     raw | shadowrocket | v2rayng)
-      cat "${subscription_file}"
+      vpskit_subscription_print_file "${subscription_file}"
       return 0
       ;;
   esac
@@ -224,7 +224,7 @@ EOF
     return 1
   fi
 
-  printf '%s' "${rendered}"
+  printf '%s\n' "${rendered}"
 }
 
 vpskit_cli_fix() {

@@ -45,6 +45,14 @@ raise SystemExit(1)
 PY
 }
 
+vpskit_subscription_print_file() {
+  local subscription_file="$1"
+  local content
+
+  content="$(<"${subscription_file}")"
+  printf '%s\n' "${content}"
+}
+
 vpskit_subscription_render_export() {
   local format="$1"
   local uri="$2"

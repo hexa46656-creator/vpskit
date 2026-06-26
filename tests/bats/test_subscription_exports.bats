@@ -18,6 +18,17 @@ prepare_subscription_file() {
 
 test_subscription_uri="vless://11111111-1111-4111-8111-111111111111@154.26.184.229:443?encryption=none&security=reality&sni=www.cloudflare.com&fp=chrome&pbk=public-test-key&sid=abcdef1234567890&type=tcp&flow=xtls-rprx-vision#VPSKit-Reality"
 
+assert_file_ends_with_single_newline() {
+  python3 - "$1" <<'PY'
+from pathlib import Path
+import sys
+
+data = Path(sys.argv[1]).read_bytes()
+assert data.endswith(b"\n"), "missing trailing newline"
+assert not data.endswith(b"\n\n"), "found extra trailing newline"
+PY
+}
+
 @test "sub help lists export commands" {
   run bash "${CLI_PATH}" sub help
 
@@ -119,6 +130,56 @@ assert reality["enabled"] is True
 assert reality["public_key"] == "public-test-key"
 assert reality["short_id"] == "abcdef1234567890"
 '
+}
+
+@test "sub export file-backed formats end with exactly one newline" {
+  prepare_subscription_file
+
+  for format in raw shadowrocket v2rayng; do
+    local output_file="${BATS_TEST_TMPDIR}/${format}.txt"
+
+    run bash -c 'bash "$1" sub export "$2" >"$3"' _ "${CLI_PATH}" "${format}" "${output_file}"
+
+    [ "$status" -eq 0 ]
+    assert_file_ends_with_single_newline "${output_file}"
+  done
+}
+
+@test "sub export rendered formats end with exactly one newline" {
+  prepare_subscription_file
+
+  for format in base64 clash-meta sing-box; do
+    local output_file="${BATS_TEST_TMPDIR}/${format}.txt"
+
+    run bash -c 'bash "$1" sub export "$2" >"$3"' _ "${CLI_PATH}" "${format}" "${output_file}"
+
+    [ "$status" -eq 0 ]
+    assert_file_ends_with_single_newline "${output_file}"
+  done
+}
+
+@test "sequential sub exports do not concatenate without separators" {
+  prepare_subscription_file
+
+  local output_file="${BATS_TEST_TMPDIR}/sequential.txt"
+
+  run bash -c '
+    set -euo pipefail
+    bash "$1" sub export base64 >"$2"
+    bash "$1" sub export clash-meta >>"$2"
+    bash "$1" sub export sing-box >>"$2"
+  ' _ "${CLI_PATH}" "${output_file}"
+
+  [ "$status" -eq 0 ]
+  assert_file_ends_with_single_newline "${output_file}"
+  python3 - "${output_file}" <<'PY'
+from pathlib import Path
+import sys
+
+data = Path(sys.argv[1]).read_bytes()
+assert b"==vless://" not in data
+assert b"rules:\n  - MATCH,PROXY{" not in data
+PY
 }
 
 @test "sub export fails clearly when the subscription file is missing" {
