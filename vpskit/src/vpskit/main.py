@@ -10,7 +10,7 @@ from vpskit.runtime.services import RuntimeServiceRegistry
 
 settings = AppSettings.from_env()
 service_registry = RuntimeServiceRegistry()
-app = FastAPI(title="VPSKit", version="0.1.0")
+app = FastAPI(title="VPSKit", version="0.6.3-beta")
 
 
 @app.get("/health")

@@ -154,7 +154,7 @@ vpskit_trojan_rotate_confirm() {
     return 0
   fi
 
-  if [ ! -t 0 ]; then
+  if vpskit_is_test_mode || [ ! -t 0 ]; then
     printf 'TROJAN_ROTATE=fail reason=confirmation_required\n'
     return 1
   fi
