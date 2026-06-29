@@ -120,8 +120,9 @@ def api_checkout_stripe(payload: CheckoutRequest) -> dict[str, str]:
 
 
 @app.get("/api/checkout/paypal")
-def api_checkout_paypal(plan: str = "basic") -> dict[str, str]:
-    return create_paypal_checkout_order(plan)
+def api_checkout_paypal(plan: str = "basic") -> RedirectResponse:
+    checkout = create_paypal_checkout_order(plan)
+    return RedirectResponse(url=checkout["checkout_url"], status_code=302)
 
 
 @app.post("/paypal-webhook")

@@ -160,10 +160,10 @@ def test_paypal_checkout_returns_approval_url(tmp_path, monkeypatch):
     monkeypatch.setattr(paypal.requests, "post", fake_post)
     client = TestClient(app_module.app)
     with client:
-        response = client.get("/api/checkout/paypal?plan=basic")
+        response = client.get("/api/checkout/paypal?plan=basic", follow_redirects=False)
 
-    assert response.status_code == 200
-    assert response.json()["checkout_url"] == "https://www.paypal.com/checkoutnow?token=ORDER-123"
+    assert response.status_code == 302
+    assert response.headers["location"] == "https://www.paypal.com/checkoutnow?token=ORDER-123"
     assert captured["url"] == "https://api-m.paypal.com/v2/checkout/orders"
     assert captured["headers"]["Authorization"].startswith("Bearer ")
     assert captured["json"]["purchase_units"][0]["custom_id"] == "plan=basic"
