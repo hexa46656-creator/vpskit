@@ -1,0 +1,26 @@
+:root { color-scheme: light; --text:#111827; --muted:#5b6472; --line:#d8dee8; --accent:#2563eb; --bg:#ffffff; --soft:#f5f7fb; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); background: var(--bg); }
+a { color: inherit; text-decoration: none; }
+.nav { height: 72px; display: flex; align-items: center; justify-content: space-between; max-width: 1120px; margin: 0 auto; padding: 0 24px; border-bottom: 1px solid var(--line); }
+.brand { font-weight: 800; font-size: 20px; }
+.nav nav { display: flex; gap: 22px; color: var(--muted); font-size: 14px; }
+main { max-width: 1120px; margin: 0 auto; padding: 56px 24px; }
+.hero { min-height: 520px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 56px; align-items: center; }
+h1 { font-size: clamp(42px, 7vw, 76px); line-height: .95; margin: 0 0 24px; letter-spacing: 0; }
+p { color: var(--muted); font-size: 18px; line-height: 1.7; }
+.actions { display: flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
+.button, button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border: 1px solid var(--line); padding: 0 18px; background: white; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.terminal { background: #0f172a; color: #e5edf8; border-radius: 8px; padding: 28px; box-shadow: 0 24px 60px rgba(15,23,42,.22); }
+.terminal span, .terminal small { display: block; color: #93a4b8; }
+.terminal code { display: block; margin: 24px 0; font-size: 18px; line-height: 1.6; word-break: break-all; }
+.features, .pricing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
+article { border: 1px solid var(--line); border-radius: 8px; padding: 24px; background: var(--soft); }
+article h2 { margin-top: 0; }
+.page-head h1, .docs h1, .success h1 { font-size: clamp(38px, 6vw, 64px); }
+.price { font-size: 36px; color: var(--text); font-weight: 800; }
+.pricing article { display: grid; gap: 12px; background: white; }
+.docs, .success { max-width: 760px; }
+pre { overflow: auto; padding: 18px; border-radius: 8px; background: #0f172a; color: #e5edf8; }
+@media (max-width: 800px) { .hero, .features, .pricing { grid-template-columns: 1fr; } .nav { align-items: flex-start; height: auto; padding-top: 18px; padding-bottom: 18px; gap: 16px; flex-direction: column; } }

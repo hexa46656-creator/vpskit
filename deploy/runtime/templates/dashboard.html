@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>VPSKit Dashboard</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 920px; margin: 48px auto; color: #111; }
+    .box { border: 1px solid #ddd; padding: 18px; border-radius: 8px; margin: 16px 0; background: #fff; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    textarea { width: 100%; min-height: 90px; font-family: ui-monospace, monospace; }
+    button { padding: 10px 14px; cursor: pointer; }
+    code { word-break: break-all; }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>VPSKit Dashboard</h1>
+  <div class="grid">
+    <div class="box">
+      <p><strong>Status:</strong> {{ subscription.status }}</p>
+      <p><strong>Node IP:</strong> {{ subscription.node_ip }}</p>
+      <p><strong>Expires:</strong> {{ subscription.expires_at }}</p>
+    </div>
+    <div class="box">
+      <p><strong>Telegram</strong></p>
+      <p><a href="{{ telegram_url | default('/billing') }}">Open support</a></p>
+      <p><strong>User:</strong> {{ user_id }}</p>
+    </div>
+  </div>
+  <div class="box">
+    <p><strong>Subscription link</strong></p>
+    <code id="subLink">/sub/{{ user_id }}</code>
+    <button onclick="navigator.clipboard.writeText(location.origin + '/sub/{{ user_id }}')">Copy link</button>
+  </div>
+  <div class="box">
+    <p><strong>Install command</strong></p>
+    <textarea id="installCommand" readonly>{{ install_command | default('') }}</textarea>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('installCommand').value)">Copy install command</button>
+    <button onclick="fetch('/dashboard/{{ user_id }}/regenerate-token', {method:'POST'}).then(r=>r.json()).then(d=>{document.getElementById('installCommand').value='curl -sSL '+d.install_url+' | bash'})">Regenerate token</button>
+  </div>
+  <div class="box">
+    <p><strong>VPN config</strong></p>
+    <textarea readonly>{{ subscription.subscription }}</textarea>
+  </div>
+  <p><a href="/billing?user_id={{ user_id }}&token={{ token }}">Billing</a></p>
+</body>
+</html>

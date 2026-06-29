@@ -1,0 +1,24 @@
+[Unit]
+Description=VPSKit SaaS Backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vpskit
+Group=vpskit
+WorkingDirectory=/opt/vpskit
+EnvironmentFile=/etc/vpskit.env
+ExecStart=/opt/vpskit/venv/bin/uvicorn app:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/vpskit
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
