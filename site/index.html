@@ -104,7 +104,7 @@
 
         const config = await configResponse.json();
         const script = document.createElement('script');
-        script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(config.client_id)}&currency=${encodeURIComponent(config.currency || 'USD')}&intent=capture`;
+        script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(config.client_id)}&currency=${encodeURIComponent(config.currency || 'USD')}&intent=capture&disable-funding=card,paylater`;
         script.async = true;
         script.onload = () => {
           if (!window.paypal || !window.paypal.Buttons) {
@@ -114,6 +114,7 @@
 
           buttonContainer.innerHTML = '';
           window.paypal.Buttons({
+            fundingSource: window.paypal.FUNDING.PAYPAL,
             style: {
               layout: 'vertical',
               color: 'blue',
