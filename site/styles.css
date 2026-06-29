@@ -21,6 +21,7 @@ article h2 { margin-top: 0; }
 .page-head h1, .docs h1, .success h1 { font-size: clamp(38px, 6vw, 64px); }
 .price { font-size: 36px; color: var(--text); font-weight: 800; }
 .pricing article { display: grid; gap: 12px; background: white; }
+.hint { margin-top: 18px; font-size: 14px; color: var(--muted); }
 .docs, .success { max-width: 760px; }
 pre { overflow: auto; padding: 18px; border-radius: 8px; background: #0f172a; color: #e5edf8; }
 @media (max-width: 800px) { .hero, .features, .pricing { grid-template-columns: 1fr; } .nav { align-items: flex-start; height: auto; padding-top: 18px; padding-bottom: 18px; gap: 16px; flex-direction: column; } }
