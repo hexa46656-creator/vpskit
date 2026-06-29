@@ -19,6 +19,9 @@ def load_app(tmp_path: Path):
     os.environ["VPSKIT_DB_PATH"] = str(tmp_path / "vpskit.sqlite3")
     os.environ["BASE_DOMAIN"] = "https://alexhexa.com/api"
     os.environ["INSTALL_BASE_DOMAIN"] = "https://alexhexa.com"
+    os.environ["PAYPAL_CLIENT_ID"] = "paypal-client"
+    os.environ["PAYPAL_SECRET"] = "paypal-secret"
+    os.environ["PAYPAL_WEBHOOK_ID"] = "webhook-id"
     os.environ["STRIPE_SECRET_KEY"] = "sk_live_test"
     os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test"
     os.environ["STRIPE_SUCCESS_URL"] = "https://alexhexa.com/success.html"
@@ -131,6 +134,39 @@ def test_stripe_checkout_session_uses_real_api_contract(tmp_path, monkeypatch):
     assert captured["headers"]["Authorization"] == "Bearer sk_live_test"
     assert captured["data"]["line_items[0][price]"] == "price_basic"
     assert captured["data"]["metadata[plan]"] == "basic"
+
+
+def test_paypal_checkout_returns_approval_url(tmp_path, monkeypatch):
+    app_module = load_app(tmp_path)
+    paypal = importlib.import_module("paypal")
+    captured: dict = {}
+
+    class Response:
+        status_code = 201
+
+        def json(self):
+            return {
+                "id": "ORDER-123",
+                "links": [
+                    {"rel": "self", "href": "https://api-m.paypal.com/v2/checkout/orders/ORDER-123"},
+                    {"rel": "approve", "href": "https://www.paypal.com/checkoutnow?token=ORDER-123"},
+                ],
+            }
+
+    def fake_post(url, auth=None, data=None, headers=None, json=None, timeout=None):
+        captured.update({"url": url, "auth": auth, "data": data, "headers": headers, "json": json, "timeout": timeout})
+        return Response()
+
+    monkeypatch.setattr(paypal.requests, "post", fake_post)
+    client = TestClient(app_module.app)
+    with client:
+        response = client.get("/api/checkout/paypal?plan=basic")
+
+    assert response.status_code == 200
+    assert response.json()["checkout_url"] == "https://www.paypal.com/checkoutnow?token=ORDER-123"
+    assert captured["url"] == "https://api-m.paypal.com/v2/checkout/orders"
+    assert captured["headers"]["Authorization"].startswith("Bearer ")
+    assert captured["json"]["purchase_units"][0]["custom_id"] == "plan=basic"
 
 
 def test_dashboard_and_static_site_files_exist(tmp_path):

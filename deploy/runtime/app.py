@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 
 from db import connect, init_db
 from config import settings
-from paypal import verify_paypal_webhook
+from paypal import create_paypal_checkout_order, verify_paypal_webhook
 from schemas import CheckoutRequest, LoginRequest, MarkUsedRequest, PayPalWebhookEvent
 from services import (
     authenticate_user,
@@ -121,12 +121,7 @@ def api_checkout_stripe(payload: CheckoutRequest) -> dict[str, str]:
 
 @app.get("/api/checkout/paypal")
 def api_checkout_paypal(plan: str = "basic") -> dict[str, str]:
-    configured_url = {
-        "basic": settings.base_domain.removesuffix("/api") + "/pricing.html#paypal-basic",
-        "pro": settings.base_domain.removesuffix("/api") + "/pricing.html#paypal-pro",
-        "elite": settings.base_domain.removesuffix("/api") + "/pricing.html#paypal-elite",
-    }.get(plan, settings.base_domain.removesuffix("/api") + "/pricing.html")
-    return {"checkout_url": configured_url}
+    return create_paypal_checkout_order(plan)
 
 
 @app.post("/paypal-webhook")

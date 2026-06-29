@@ -44,6 +44,15 @@ def _get_access_token() -> str:
     return str(access_token)
 
 
+def _plan_amount(plan: str) -> tuple[str, str]:
+    normalized = plan if plan in {"basic", "pro", "elite"} else "basic"
+    return {
+        "basic": ("9.00", "basic"),
+        "pro": ("19.00", "pro"),
+        "elite": ("49.00", "elite"),
+    }[normalized]
+
+
 def verify_paypal_webhook(request: Request, event_body: dict[str, Any]) -> None:
     headers = request.headers
     required = {
@@ -87,3 +96,39 @@ def verify_paypal_webhook(request: Request, event_body: dict[str, Any]) -> None:
         raise HTTPException(status_code=502, detail="paypal_verification_failed")
     if response.json().get("verification_status") != "SUCCESS":
         raise HTTPException(status_code=403, detail="invalid_paypal_signature")
+
+
+def create_paypal_checkout_order(plan: str) -> dict[str, str]:
+    amount, normalized_plan = _plan_amount(plan)
+    response = requests.post(
+        f"{settings.paypal_base_url}/v2/checkout/orders",
+        headers={
+            "Authorization": f"Bearer {_get_access_token()}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "intent": "CAPTURE",
+            "purchase_units": [
+                {
+                    "reference_id": normalized_plan,
+                    "custom_id": f"plan={normalized_plan}",
+                    "amount": {"currency_code": "USD", "value": amount},
+                }
+            ],
+            "application_context": {
+                "return_url": f"{settings.install_base_domain}/success.html",
+                "cancel_url": f"{settings.install_base_domain}/pricing.html",
+                "user_action": "PAY_NOW",
+            },
+        },
+        timeout=15,
+    )
+    if response.status_code >= 400:
+        raise HTTPException(status_code=502, detail="paypal_checkout_failed")
+
+    payload = response.json()
+    links = payload.get("links") or []
+    approval_url = next((item.get("href") for item in links if item.get("rel") == "approve"), None)
+    if not approval_url:
+        raise HTTPException(status_code=502, detail="paypal_approval_url_missing")
+    return {"checkout_url": str(approval_url), "order_id": str(payload.get("id", ""))}
