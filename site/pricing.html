@@ -11,24 +11,10 @@
   <main>
     <section class="page-head"><h1>Pricing</h1><p>Choose a plan and provision access automatically after payment.</p></section>
     <section class="pricing">
-      <article><h2>Basic</h2><p class="price">$9</p><a id="paypal-basic" class="button" href="https://alexhexa.com/api/checkout/paypal?plan=basic">PayPal</a><button data-plan="basic">Stripe</button></article>
-      <article><h2>Pro</h2><p class="price">$19</p><a id="paypal-pro" class="button" href="https://alexhexa.com/api/checkout/paypal?plan=pro">PayPal</a><button data-plan="pro">Stripe</button></article>
-      <article><h2>Elite</h2><p class="price">$49</p><a id="paypal-elite" class="button" href="https://alexhexa.com/api/checkout/paypal?plan=elite">PayPal</a><button data-plan="elite">Stripe</button></article>
+      <article><h2>Basic</h2><p class="price">$9</p><a id="paypal-basic" class="button" href="https://alexhexa.com/api/checkout/paypal?plan=basic">PayPal</a></article>
+      <article><h2>Pro</h2><p class="price">$19</p><a id="paypal-pro" class="button" href="https://alexhexa.com/api/checkout/paypal?plan=pro">PayPal</a></article>
+      <article><h2>Elite</h2><p class="price">$49</p><a id="paypal-elite" class="button" href="https://alexhexa.com/api/checkout/paypal?plan=elite">PayPal</a></article>
     </section>
   </main>
-  <script>
-    document.querySelectorAll('button[data-plan]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        const response = await fetch('https://alexhexa.com/api/checkout/stripe', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({plan: button.dataset.plan})
-        });
-        const payload = await response.json();
-        if (payload.checkout_url) location.href = payload.checkout_url;
-        else alert(payload.detail || 'Checkout is unavailable');
-      });
-    });
-  </script>
 </body>
 </html>
