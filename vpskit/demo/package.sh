@@ -5,11 +5,11 @@ VPSKIT_DEMO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../core/common.sh
 source "${VPSKIT_DEMO_DIR}/../core/common.sh"
 # shellcheck disable=SC1091
+# shellcheck source=../core/public_surface.sh
+source "${VPSKIT_DEMO_DIR}/../core/public_surface.sh"
+# shellcheck disable=SC1091
 # shellcheck source=../qa/run.sh
 source "${VPSKIT_DEMO_DIR}/../qa/run.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../install/trojan.sh
-source "${VPSKIT_DEMO_DIR}/../install/trojan.sh"
 
 vpskit_demo_package_write_file() {
   local output_path="$1"

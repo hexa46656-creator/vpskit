@@ -5,8 +5,8 @@ VPSKIT_SUBSCRIPTION_MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../core/common.sh
 source "${VPSKIT_SUBSCRIPTION_MODULE_DIR}/../core/common.sh"
 # shellcheck disable=SC1091
-# shellcheck source=../install/trojan.sh
-source "${VPSKIT_SUBSCRIPTION_MODULE_DIR}/../install/trojan.sh"
+# shellcheck source=../core/public_surface.sh
+source "${VPSKIT_SUBSCRIPTION_MODULE_DIR}/../core/public_surface.sh"
 
 vpskit_subscription_supported_formats() {
   printf 'SUPPORTED_SUB_FORMATS=raw,base64,shadowrocket,v2rayng,clash-meta,sing-box,hysteria2,trojan\n'
@@ -32,6 +32,7 @@ from pathlib import Path
 import sys
 
 path = Path(sys.argv[1])
+allowed_prefixes = ("vless://", "trojan://", "hysteria://")
 
 try:
     text = path.read_text(encoding="utf-8")
@@ -42,14 +43,26 @@ except UnicodeDecodeError:
     print(f"ERROR subscription file is not valid UTF-8: {path}")
     raise SystemExit(1)
 
+first_non_empty_line = ""
+
 for raw_line in text.splitlines():
     line = raw_line.strip()
     if line:
-        print(line)
-        raise SystemExit(0)
+        first_non_empty_line = line
+        break
 
-print(f"ERROR malformed VLESS Reality URI: empty subscription file: {path}")
-raise SystemExit(1)
+if not first_non_empty_line:
+    print(f"ERROR malformed subscription URI: empty subscription file: {path}")
+    raise SystemExit(1)
+
+if not first_non_empty_line.startswith(allowed_prefixes):
+    print(
+        "ERROR malformed subscription URI: expected vless://, trojan://, or hysteria://"
+    )
+    raise SystemExit(1)
+
+print(first_non_empty_line)
+raise SystemExit(0)
 PY
 }
 
@@ -91,8 +104,14 @@ vpskit_subscription_write_output_file() {
   local content="$3"
   local status_extra="${4:-}"
   local parent_dir
+  local payload_path
+  local payload_path_quoted
+  local output_path_quoted
+  local parent_dir_quoted
 
   parent_dir="$(dirname "${output_path}")"
+  output_path_quoted="$(vpskit_shell_quote "${output_path}")"
+  parent_dir_quoted="$(vpskit_shell_quote "${parent_dir}")"
 
   if [ -d "${output_path}" ]; then
     printf 'SUB_EXPORT=fail format=%s reason=output_path_is_directory output=%s\n' "${format}" "${output_path}"
@@ -104,10 +123,19 @@ vpskit_subscription_write_output_file() {
     return 1
   fi
 
-  if ! printf '%s\n' "${content}" >"${output_path}"; then
+  payload_path="$(mktemp "${TMPDIR:-/tmp}/vpskit-sub-export.XXXXXX")" || return 1
+  printf '%s\n' "${content}" >"${payload_path}" || {
+    rm -f "${payload_path}"
+    return 1
+  }
+  payload_path_quoted="$(vpskit_shell_quote "${payload_path}")"
+
+  if ! vpskit_safe_run_script "mkdir -p ${parent_dir_quoted}; cp ${payload_path_quoted} ${output_path_quoted}"; then
+    rm -f "${payload_path}"
     printf 'SUB_EXPORT=fail format=%s reason=write_failed output=%s\n' "${format}" "${output_path}"
     return 1
   fi
+  rm -f "${payload_path}"
 
   if [ -n "${status_extra}" ]; then
     printf 'SUB_EXPORT=pass format=%s output=%s %s\n' "${format}" "${output_path}" "${status_extra}"

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC1091
+# shellcheck source=../core/installer_runtime.sh
+source "${BASH_SOURCE[0]%/*}/../core/installer_runtime.sh"
+
 vpskit_hardening_managed_user() {
   printf '%s\n' "${VPSKIT_MANAGED_USER:-alex}"
 }
@@ -393,6 +397,40 @@ X11Forwarding no
 EOF
 }
 
+vpskit_hardening_reload_ssh_service() {
+  local service_name
+
+  if vpskit_is_dry_run; then
+    vpskit_dry_run_log "systemctl reload ssh.service"
+    return 0
+  fi
+
+  for service_name in ssh.service sshd.service; do
+    if vpskit_run_mutation systemctl reload "${service_name}" >/dev/null 2>&1; then
+      return 0
+    fi
+  done
+
+  vpskit_die "unable to reload ssh service via ssh.service or sshd.service"
+  return 1
+}
+
+vpskit_hardening_verify_ssh_listener() {
+  local ssh_port="$1"
+
+  if vpskit_is_dry_run; then
+    vpskit_dry_run_log "ss -H -ltn 'sport = :${ssh_port}'"
+    return 0
+  fi
+
+  if ss -H -ltn "sport = :${ssh_port}" 2>/dev/null | grep -q .; then
+    return 0
+  fi
+
+  vpskit_die "SSH listener did not come back on port ${ssh_port}"
+  return 1
+}
+
 vpskit_hardening_apply() {
   local managed_user="$1"
   local ssh_port="$2"
@@ -416,7 +454,8 @@ vpskit_hardening_apply() {
 
   vpskit_write_managed_file "/etc/ssh/sshd_config.d/99-vpskit-hardening.conf" 0644 "${sshd_content}" || return 1
   vpskit_run_mutation sshd -t || return 1
-  vpskit_run_mutation systemctl reload ssh.service || return 1
+  vpskit_hardening_reload_ssh_service || return 1
+  vpskit_hardening_verify_ssh_listener "${ssh_port}" || return 1
 
   vpskit_log_warn "UFW state changes cannot be fully rolled back automatically"
   vpskit_run_mutation ufw status verbose || true

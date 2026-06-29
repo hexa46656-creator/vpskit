@@ -8,6 +8,9 @@ source "${VPSKIT_QA_DIR}/../core/common.sh"
 # shellcheck source=../core/system_check.sh
 source "${VPSKIT_QA_DIR}/../core/system_check.sh"
 # shellcheck disable=SC1091
+# shellcheck source=../core/public_surface.sh
+source "${VPSKIT_QA_DIR}/../core/public_surface.sh"
+# shellcheck disable=SC1091
 # shellcheck source=../verify/checks.sh
 source "${VPSKIT_QA_DIR}/../verify/checks.sh"
 # shellcheck disable=SC1091

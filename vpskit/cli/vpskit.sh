@@ -21,17 +21,8 @@ source "${VPSKIT_ROOT}/core/transaction.sh"
 # shellcheck source=../core/safety.sh
 source "${VPSKIT_ROOT}/core/safety.sh"
 # shellcheck disable=SC1091
-# shellcheck source=../install/hardening.sh
-source "${VPSKIT_ROOT}/install/hardening.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../install/vless_reality.sh
-source "${VPSKIT_ROOT}/install/vless_reality.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../install/hysteria2.sh
-source "${VPSKIT_ROOT}/install/hysteria2.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../install/trojan.sh
-source "${VPSKIT_ROOT}/install/trojan.sh"
+# shellcheck source=../core/public_surface.sh
+source "${VPSKIT_ROOT}/core/public_surface.sh"
 # shellcheck disable=SC1091
 # shellcheck source=../rotate/trojan.sh
 source "${VPSKIT_ROOT}/rotate/trojan.sh"
@@ -54,20 +45,8 @@ source "${VPSKIT_ROOT}/network/trojan_doctor.sh"
 # shellcheck source=../network/hysteria2_doctor.sh
 source "${VPSKIT_ROOT}/network/hysteria2_doctor.sh"
 # shellcheck disable=SC1091
-# shellcheck source=../subscription/shadowrocket_repair.sh
-source "${VPSKIT_ROOT}/subscription/shadowrocket_repair.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../subscription/export.sh
-source "${VPSKIT_ROOT}/subscription/export.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../subscription/bundle.sh
-source "${VPSKIT_ROOT}/subscription/bundle.sh"
-# shellcheck disable=SC1091
 # shellcheck source=../qa/run.sh
 source "${VPSKIT_ROOT}/qa/run.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../demo/package.sh
-source "${VPSKIT_ROOT}/demo/package.sh"
 # shellcheck disable=SC1091
 # shellcheck source=../verify/checks.sh
 source "${VPSKIT_ROOT}/verify/checks.sh"
@@ -76,7 +55,7 @@ vpskit_cli_version() {
   cat <<'EOF'
 VPSKit v0.7.0-beta
 Available commands: version, status, doctor, qa, sub, demo, fix, install, verify, rotate
-Available components: CLI, read-only QA, demo packaging, unified client bundle export, hardening installer, VLESS Reality installer, Hysteria2 installer, Trojan installer, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export
+Available components: CLI, read-only QA, static release packaging, DNS health, TCP probe, fallback report, Shadowrocket repair, subscription export, rotate compatibility
 EOF
 }
 
@@ -85,7 +64,6 @@ vpskit_cli_status() {
   vpskit_system_inspection_summary
   printf 'CLI=available\n'
   printf 'QA=available\n'
-  printf 'DEMO_PACKAGE=available\n'
   printf 'SUB_BUNDLE=available\n'
   printf 'SUBSCRIPTION_REPAIR=available\n'
   printf 'SUBSCRIPTION_EXPORT=available\n'
@@ -98,7 +76,7 @@ vpskit_cli_status() {
 }
 
 vpskit_cli_doctor() {
-  local dns_target="${VPSKIT_DOCTOR_DNS_TARGET:-www.cloudflare.com}"
+  local dns_target="${VPSKIT_DNS_TARGET:-www.cloudflare.com}"
   local tcp_host="${VPSKIT_DOCTOR_TCP_HOST:-127.0.0.1}"
   local tcp_port="${VPSKIT_DOCTOR_TCP_PORT:-443}"
   local subscription_file
@@ -374,7 +352,7 @@ vpskit_cli_sub_validate() {
 }
 
 vpskit_cli_sub_bundle() {
-  vpskit_bundle_export_main "$@"
+  bash "${VPSKIT_ROOT}/subscription/bundle.sh" "$@"
 }
 
 vpskit_cli_fix() {
@@ -392,7 +370,7 @@ vpskit_cli_fix() {
     return 0
   fi
 
-  dns_state="$(vpskit_dns_health "${VPSKIT_DOCTOR_DNS_TARGET:-localhost}" || true)"
+  dns_state="$(vpskit_dns_health "${VPSKIT_DNS_TARGET:-www.cloudflare.com}" || true)"
   tcp_state="$(vpskit_tcp_probe "${VPSKIT_DOCTOR_TCP_HOST:-127.0.0.1}" "${VPSKIT_DOCTOR_TCP_PORT:-443}" || true)"
   vpskit_fallback_report "${dns_state}" "${tcp_state}"
 }
@@ -401,36 +379,21 @@ vpskit_cli_install() {
   local target="${1:-}"
 
   case "${target}" in
-    hardening)
-      vpskit_with_lock vpskit_install_hardening
-      ;;
-    vless-reality)
-      vpskit_with_lock vpskit_install_vless_reality
-      ;;
-    hysteria2)
-      vpskit_with_lock vpskit_install_hysteria2
-      ;;
-    trojan)
-      vpskit_with_lock vpskit_install_trojan
-      ;;
     "" | help | --help | -h)
       cat <<'EOF'
 Usage:
-  vpskit install hardening
-  vpskit install vless-reality
-  vpskit install hysteria2
-  vpskit install trojan
+  vpskit install <target>
 EOF
       ;;
     *)
-      vpskit_die "unknown install target: ${target}"
+      printf 'INSTALL=fail reason=installer_layer_separated target=%s\n' "${target}"
       return 1
       ;;
   esac
 }
 
 vpskit_cli_demo() {
-  vpskit_demo_dispatch "$@"
+  bash "${VPSKIT_ROOT}/demo/package.sh" "$@"
 }
 
 vpskit_cli_verify() {
@@ -492,16 +455,14 @@ Usage:
   vpskit sub bundle --redact --output <dir>
   vpskit sub bundle --force --output <dir>
   vpskit sub validate
+  vpskit release bundle
   vpskit demo package
   vpskit demo package --redact
   vpskit demo package --output <dir>
   vpskit demo package --redact --output <dir>
   vpskit demo package --force --output <dir>
   vpskit fix
-  vpskit install hardening
-  vpskit install vless-reality
-  vpskit install hysteria2
-  vpskit install trojan
+  vpskit install <target>
   vpskit verify ssh-user
   vpskit verify vless-reality
   vpskit verify hysteria2
@@ -510,6 +471,40 @@ Usage:
   vpskit rotate trojan --yes
   vpskit rotate trojan --dry-run
 EOF
+}
+
+vpskit_cli_release() {
+  local subcommand="${1:-bundle}"
+
+  shift || true
+
+  case "${subcommand}" in
+    bundle)
+      local project_root
+      local release_script
+
+      project_root="$(cd "${VPSKIT_ROOT}/.." && pwd)"
+      release_script="${project_root}/scripts/release_packager.sh"
+
+      if [ ! -f "${release_script}" ]; then
+        vpskit_die "release bundle script not found: ${release_script}"
+        return 1
+      fi
+
+      bash "${release_script}" "$@"
+      ;;
+    "" | help | --help | -h)
+      cat <<'EOF'
+Usage:
+  vpskit release bundle
+EOF
+      return 0
+      ;;
+    *)
+      vpskit_die "unknown release command: ${subcommand}"
+      return 1
+      ;;
+  esac
 }
 
 vpskit_cli_rotate() {
@@ -595,6 +590,9 @@ main() {
       ;;
     sub)
       vpskit_cli_sub "$@"
+      ;;
+    release)
+      vpskit_cli_release "$@"
       ;;
     demo)
       vpskit_cli_demo "$@"

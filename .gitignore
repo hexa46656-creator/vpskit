@@ -8,6 +8,15 @@ __pycache__/
 .pytest_cache/
 .venv/
 .env
+docs/internal/
 release/*.log
 release/*.tmp
 release/*.bak
+vpskit/output/
+vpskit-client-bundle*/
+vpskit-demo-package*/
+tmp/
+*.uri
+*.yaml
+*.json
+*.zip

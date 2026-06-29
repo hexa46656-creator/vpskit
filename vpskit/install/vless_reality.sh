@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC1091
+# shellcheck source=../core/installer_runtime.sh
+source "${BASH_SOURCE[0]%/*}/../core/installer_runtime.sh"
+
 vpskit_vless_xray_port() {
   printf '%s\n' "${VPSKIT_XRAY_PORT:-443}"
 }
@@ -211,11 +215,11 @@ vpskit_install_or_prepare_xray() {
   fi
 
   tmp_installer="$(mktemp)"
-  if ! curl -fsSL -o "${tmp_installer}" "${installer_url}"; then
+  if ! vpskit_run_mutation curl -fsSL -o "${tmp_installer}" "${installer_url}"; then
     rm -f "${tmp_installer}"
     return 1
   fi
-  if ! bash "${tmp_installer}" install; then
+  if ! vpskit_run_mutation bash "${tmp_installer}" install; then
     rm -f "${tmp_installer}"
     return 1
   fi
@@ -447,6 +451,12 @@ vpskit_install_vless_reality() {
   if [ "${status}" -eq 0 ]; then
     server_name="$(vpskit_vless_server_name)"
     dest="$(vpskit_vless_dest)"
+    vpskit_assert_dns_safety "${server_name}" || status=$?
+    if [ "${status}" -eq 0 ]; then
+      vpskit_assert_dns_safety "${dest}" || status=$?
+    fi
+  fi
+  if [ "${status}" -eq 0 ]; then
     config="$(vpskit_render_xray_config "${port}" "${uuid}" "${private_key}" "${short_id}" "${server_name}" "${dest}")" || status=$?
     uri="$(vpskit_render_vless_uri "${uuid}" "${public_ip}" "${port}" "${server_name}" "${public_key}" "${short_id}")"
   fi

@@ -27,6 +27,20 @@ vpskit_require_command() {
   vpskit_die "required command not found: ${command_name}"
 }
 
+vpskit_run_root() {
+  if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+    "$@"
+    return $?
+  fi
+
+  if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+    sudo -n "$@"
+    return $?
+  fi
+
+  vpskit_die "root access or passwordless sudo is required"
+}
+
 vpskit_is_dry_run() {
   case "${VPSKIT_DRY_RUN:-}" in
     1 | true | TRUE | yes | YES | on | ON)
@@ -120,7 +134,24 @@ vpskit_run_mutation() {
     return 0
   fi
 
-  "$@"
+  local snippet
+
+  if [ "$#" -eq 0 ]; then
+    vpskit_die "mutation command is required"
+    return 1
+  fi
+
+  snippet="$(vpskit_shell_join_command "$@")"
+
+  if ! vpskit_execution_guard "$@"; then
+    return 1
+  fi
+
+  if [ "${VPSKIT_ENFORCE_LOCK_CHAIN:-0}" = "1" ] && type vpskit_assert_lock_chain_active >/dev/null 2>&1; then
+    vpskit_assert_lock_chain_active || return 1
+  fi
+
+  vpskit_safe_run_script "${snippet% }"
 }
 
 vpskit_write_managed_file() {
@@ -131,6 +162,9 @@ vpskit_write_managed_file() {
   local backup_path=""
   local quoted_target
   local quoted_backup
+  local payload_path
+  local payload_path_quoted
+  local parent_dir_quoted
 
   target_path="$(vpskit_system_path "${path}")"
 
@@ -140,18 +174,46 @@ vpskit_write_managed_file() {
     return 0
   fi
 
-  mkdir -p "$(dirname "${target_path}")"
   quoted_target="$(vpskit_shell_quote "${target_path}")"
+  parent_dir_quoted="$(vpskit_shell_quote "$(dirname "${target_path}")")"
+  payload_path="$(mktemp "${TMPDIR:-/tmp}/vpskit-write.XXXXXX")" || return 1
+  printf '%s\n' "${content}" >"${payload_path}" || {
+    rm -f "${payload_path}"
+    return 1
+  }
+  payload_path_quoted="$(vpskit_shell_quote "${payload_path}")"
 
   if [ -e "${target_path}" ]; then
     backup_path="$(mktemp)"
-    cp -a "${target_path}" "${backup_path}"
+    vpskit_run_mutation cp -a "${target_path}" "${backup_path}" || {
+      rm -f "${payload_path}" "${backup_path}"
+      return 1
+    }
     quoted_backup="$(vpskit_shell_quote "${backup_path}")"
     vpskit_rollback_add "cp -a ${quoted_backup} ${quoted_target}; rm -f ${quoted_backup}" || return 1
   else
     vpskit_rollback_add "rm -f ${quoted_target}" || return 1
   fi
 
-  printf '%s\n' "${content}" >"${target_path}"
-  chmod "${mode}" "${target_path}"
+  if ! vpskit_safe_run_script "mkdir -p ${parent_dir_quoted}; cp ${payload_path_quoted} ${quoted_target}; chmod ${mode} ${quoted_target}"; then
+    rm -f "${payload_path}"
+    return 1
+  fi
+
+  rm -f "${payload_path}"
 }
+
+# shellcheck disable=SC1091
+if [ -f "${BASH_SOURCE[0]%/*}/execution_security.sh" ]; then
+  source "${BASH_SOURCE[0]%/*}/execution_security.sh"
+fi
+
+# shellcheck disable=SC1091
+if [ -f "${BASH_SOURCE[0]%/*}/dns_safety.sh" ]; then
+  source "${BASH_SOURCE[0]%/*}/dns_safety.sh"
+fi
+
+# shellcheck disable=SC1091
+if [ -f "${BASH_SOURCE[0]%/*}/concurrency_v2.sh" ]; then
+  source "${BASH_SOURCE[0]%/*}/concurrency_v2.sh"
+fi

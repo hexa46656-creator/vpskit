@@ -5,14 +5,8 @@ VPSKIT_BUNDLE_MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../core/common.sh
 source "${VPSKIT_BUNDLE_MODULE_DIR}/../core/common.sh"
 # shellcheck disable=SC1091
-# shellcheck source=../install/hysteria2.sh
-source "${VPSKIT_BUNDLE_MODULE_DIR}/../install/hysteria2.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../install/trojan.sh
-source "${VPSKIT_BUNDLE_MODULE_DIR}/../install/trojan.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../subscription/export.sh
-source "${VPSKIT_BUNDLE_MODULE_DIR}/../subscription/export.sh"
+# shellcheck source=../core/public_surface.sh
+source "${VPSKIT_BUNDLE_MODULE_DIR}/../core/public_surface.sh"
 # shellcheck disable=SC1091
 # shellcheck source=../qa/run.sh
 source "${VPSKIT_BUNDLE_MODULE_DIR}/../qa/run.sh"
@@ -20,7 +14,7 @@ source "${VPSKIT_BUNDLE_MODULE_DIR}/../qa/run.sh"
 VPSKIT_BUNDLE_VERSION="v0.7.0-beta"
 
 vpskit_bundle_default_output_dir() {
-  printf '%s\n' "./vpskit-client-bundle"
+  printf '%s\n' "./vpskit-bundle"
 }
 
 vpskit_bundle_nonempty_dir() {
@@ -32,9 +26,26 @@ vpskit_bundle_nonempty_dir() {
 vpskit_bundle_write_file() {
   local output_path="$1"
   local content="$2"
+  local payload_path
+  local payload_path_quoted
+  local output_path_quoted
+  local parent_dir
 
-  mkdir -p "$(dirname "${output_path}")"
-  printf '%s\n' "${content}" >"${output_path}"
+  parent_dir="$(dirname "${output_path}")"
+  payload_path="$(mktemp "${TMPDIR:-/tmp}/vpskit-bundle.XXXXXX")" || return 1
+  printf '%s\n' "${content}" >"${payload_path}" || {
+    rm -f "${payload_path}"
+    return 1
+  }
+  payload_path_quoted="$(vpskit_shell_quote "${payload_path}")"
+  output_path_quoted="$(vpskit_shell_quote "${output_path}")"
+
+  if ! vpskit_safe_run_script "mkdir -p $(vpskit_shell_quote "${parent_dir}"); cp ${payload_path_quoted} ${output_path_quoted}"; then
+    rm -f "${payload_path}"
+    return 1
+  fi
+
+  rm -f "${payload_path}"
 }
 
 vpskit_bundle_timestamp() {
@@ -298,8 +309,8 @@ vpskit_bundle_command_checklist() {
 
 ```bash
 vpskit qa --redact
-vpskit sub bundle --redact --output ./vpskit-client-bundle
-vpskit sub bundle --redact --force --output ./vpskit-client-bundle
+vpskit sub bundle --redact --output ./vpskit-bundle
+vpskit sub bundle --redact --force --output ./vpskit-bundle
 vpskit verify vless-reality
 vpskit verify hysteria2
 vpskit verify trojan
@@ -399,7 +410,7 @@ EOF
     find "${output_dir}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
   fi
 
-  if ! mkdir -p "${output_dir}/subscriptions" "${output_dir}/troubleshooting"; then
+  if ! vpskit_run_mutation mkdir -p "${output_dir}/subscriptions" "${output_dir}/troubleshooting"; then
     printf 'SUB_BUNDLE=fail reason=mkdir_failed output=%s\n' "${output_dir}"
     return 1
   fi

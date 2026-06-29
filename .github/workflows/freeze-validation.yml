@@ -1,0 +1,34 @@
+name: VPSKit Freeze Validation
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "vpskit-pre-split-freeze"
+
+jobs:
+  validate-freeze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Freeze tag validation
+        run: bash scripts/ci/freeze-check.sh
+      - name: Manifest generation
+        run: bash scripts/ci/generate-manifest.sh > "$RUNNER_TEMP/vpskit-split-manifest.json"
+      - name: Dependency analysis
+        run: bash scripts/ci/dependency-analyzer.sh
+      - name: Cross-repo overlap detection
+        run: bash scripts/ci/overlap-detector.sh
+
+  approval-gate:
+    runs-on: ubuntu-latest
+    needs: validate-freeze
+    environment:
+      name: split-approval
+    steps:
+      - name: Manual approval marker
+        run: echo "READY FOR MANUAL APPROVAL"
+      - name: Ready marker
+        run: echo "Freeze validation completed; manual review required before any apply path."

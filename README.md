@@ -2,6 +2,32 @@
 
 VPSKit is a practical VPS deployment and repair toolkit.
 
+## Open Source Scope
+
+The public layer covers the safe, non-sensitive VPSKit surface:
+
+- architecture notes for the stable core
+- FastAPI endpoint descriptions only
+- testing strategy and validation guidance
+- read-only system inspection summaries
+- installer safety concepts for Phase 1A and Phase 1B
+
+The repository currently treats Phase 0.5, Phase 1A, and Phase 1B as the public
+baseline. The boundary is intentionally conservative: no system mutation should
+be described as part of the open source layer unless it is already covered by
+the safe installer model.
+
+## Script Execution Security Framework
+
+VPSKit uses a guarded execution path for installer-side commands.
+
+- `curl | bash` and `wget | bash` are blocked
+- checksum verification is required for safe wrapper execution
+- installers run through `vpskit_safe_run` when executing verified artifacts
+- installer entrypoints share the same execution guard through the core mutation
+  wrapper
+- Bats tests cover unsafe pattern detection and checksum enforcement
+
 Current beta capability: `v0.7.0-beta` keeps the existing services and adds read-only QA, redacted demo packaging, and unified client bundle export:
 
 - VPS hardening for Ubuntu 24.04 LTS
@@ -209,9 +235,15 @@ Uninstall:
 
 - Remove the cloned repository directory when you are done with the toolkit.
 
-Commercial delivery:
+## Commercial Scope (Internal)
 
-- See [release/commercial-delivery.md](release/commercial-delivery.md)
+An internal planning layer exists for commercial and operational work, but it is
+not part of the public open source surface.
+
+- It may contain roadmap, SaaS, subscription, payment, automation, and bot
+  planning.
+- It is intentionally excluded from public documentation.
+- No monetization details are documented in the open source layer.
 
 Release notes:
 
@@ -233,6 +265,29 @@ Release notes:
 - See [release/v2.0.0-beta-inventory.md](release/v2.0.0-beta-inventory.md)
 
 ## 中文
+
+## 开源范围
+
+公开层仅覆盖安全、非敏感的 VPSKit 内容：
+
+- 稳定核心的架构说明
+- 仅限 FastAPI 接口描述
+- 测试策略与验证说明
+- 只读系统检查摘要
+- Phase 1A 和 Phase 1B 的安装器安全概念
+
+当前仓库将 Phase 0.5、Phase 1A 和 Phase 1B 视为公开基线。边界刻意保持保守：
+除非已经包含在安全安装模型里，否则公开层不应描述任何系统变更。
+
+## 脚本执行安全框架
+
+VPSKit 对安装器执行路径进行了统一保护。
+
+- 禁止 `curl | bash` 和 `wget | bash`
+- 安全执行包装器必须进行 checksum 校验
+- 通过 `vpskit_safe_run` 执行已验证的工件
+- 安装器入口通过核心 mutation 包装器共享执行守卫
+- Bats 测试覆盖危险模式检测与 checksum 约束
 
 VPSKit 是一个实用的 VPS 部署与修复工具包。
 

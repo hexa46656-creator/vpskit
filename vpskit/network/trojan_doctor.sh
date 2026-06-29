@@ -2,8 +2,11 @@
 
 VPSKIT_NETWORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
-# shellcheck source=../install/trojan.sh
-source "${VPSKIT_NETWORK_DIR}/../install/trojan.sh"
+# shellcheck source=../core/common.sh
+source "${VPSKIT_NETWORK_DIR}/../core/common.sh"
+# shellcheck disable=SC1091
+# shellcheck source=../core/public_surface.sh
+source "${VPSKIT_NETWORK_DIR}/../core/public_surface.sh"
 
 vpskit_trojan_binary_state() {
   local bin_path

@@ -1,4 +1,4 @@
-# VPSKit v2.0.0-beta 安装指南
+# VPSKit v0.7.0-beta 安装指南
 
 ## 安装
 

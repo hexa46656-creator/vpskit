@@ -1,0 +1,11 @@
+# Command Checklist
+
+```bash
+vpskit qa --redact
+vpskit sub bundle --redact --output ./vpskit-bundle
+vpskit sub bundle --redact --force --output ./vpskit-bundle
+vpskit verify vless-reality
+vpskit verify hysteria2
+vpskit verify trojan
+vpskit doctor
+```

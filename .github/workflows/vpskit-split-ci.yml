@@ -1,0 +1,66 @@
+name: VPSKit Split CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Dry-run or apply simulation"
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - apply
+      approve_execution:
+        description: "Manual approval gate"
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Freeze validation
+        run: bash scripts/ci/freeze-check.sh
+      - name: Manifest generation
+        run: bash scripts/ci/generate-manifest.sh > "$RUNNER_TEMP/vpskit-split-manifest.json"
+      - name: Dependency analysis
+        run: bash scripts/ci/dependency-analyzer.sh
+      - name: Cross-repo overlap detection
+        run: bash scripts/ci/overlap-detector.sh
+      - name: Dry-run split simulation
+        run: bash scripts/ci/dry-run-split.sh
+
+  approval-gate:
+    runs-on: ubuntu-latest
+    needs: preflight
+    environment:
+      name: split-approval
+    steps:
+      - name: Manual approval marker
+        run: |
+          echo "READY FOR MANUAL APPROVAL"
+          echo "Approve the deployment gate in GitHub before any execution stage."
+
+  execution-stage:
+    runs-on: ubuntu-latest
+    needs: approval-gate
+    if: ${{ inputs.approve_execution && inputs.mode == 'apply' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Re-validate freeze tag
+        run: bash scripts/ci/freeze-check.sh
+      - name: Rebuild manifest
+        run: bash scripts/ci/generate-manifest.sh > "$RUNNER_TEMP/vpskit-split-manifest.json"
+      - name: Re-run dry-run split simulation
+        run: bash scripts/ci/dry-run-split.sh
+      - name: Execution placeholder
+        run: |
+          echo "THIS WORKFLOW NEVER EXECUTES FILTER-REPO"
+          echo "It only validates the cutover inputs and stops."

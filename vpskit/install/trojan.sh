@@ -3,14 +3,8 @@
 VPSKIT_TROJAN_DEFAULT_PORT="8443"
 
 # shellcheck disable=SC1091
-# shellcheck source=../core/common.sh
-source "${BASH_SOURCE[0]%/*}/../core/common.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../core/system_check.sh
-source "${BASH_SOURCE[0]%/*}/../core/system_check.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../install/vless_reality.sh
-source "${BASH_SOURCE[0]%/*}/vless_reality.sh"
+# shellcheck source=../core/installer_runtime.sh
+source "${BASH_SOURCE[0]%/*}/../core/installer_runtime.sh"
 
 vpskit_trojan_port() {
   printf '%s\n' "${VPSKIT_TROJAN_PORT:-${VPSKIT_TROJAN_DEFAULT_PORT}}"
@@ -439,7 +433,7 @@ vpskit_trojan_generate_cert_bundle() {
     return 0
   fi
 
-  mkdir -p "$(dirname "${cert_path}")"
+  vpskit_run_mutation mkdir -p "$(dirname "${cert_path}")" || return 1
   tmp_config="$(mktemp)"
   cat >"${tmp_config}" <<EOF
 [ req ]
@@ -465,8 +459,8 @@ EOF
     return 1
   fi
 
-  chmod 0600 "${key_path}"
-  chmod 0644 "${cert_path}"
+  vpskit_run_mutation chmod 0600 "${key_path}"
+  vpskit_run_mutation chmod 0644 "${cert_path}"
   rm -f "${tmp_config}"
 }
 
@@ -814,6 +808,19 @@ vpskit_install_trojan() {
     vpskit_release_lock
     return 1
   fi
+
+  vpskit_assert_dns_safety "${server_address}" || {
+    printf 'TROJAN_INSTALL=fail reason=dns_target_forbidden\n'
+    vpskit_transaction_abort
+    vpskit_release_lock
+    return 1
+  }
+  vpskit_assert_dns_safety "${sni}" || {
+    printf 'TROJAN_INSTALL=fail reason=dns_target_forbidden\n'
+    vpskit_transaction_abort
+    vpskit_release_lock
+    return 1
+  }
 
   if ! vpskit_trojan_generate_cert_bundle "${server_address}"; then
     printf 'TROJAN_INSTALL=fail reason=certificate_generation_failed\n'

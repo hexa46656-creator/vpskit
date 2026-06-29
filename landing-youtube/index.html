@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Watch a short VPSKit demo and download the bundle for a safe, customer-ready handoff." />
+  <meta name="keywords" content="VPSKit, VPN bundle, client download, redacted export, Hysteria2, VLESS Reality, Trojan" />
+  <meta property="og:title" content="VPSKit for YouTube viewers" />
+  <meta property="og:description" content="A simple bundle download flow for people who want a clean VPN client handoff." />
+  <title>VPSKit Bundle for YouTube Traffic</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a1020;
+      --surface: rgba(13, 20, 36, 0.88);
+      --surface-soft: rgba(19, 29, 49, 0.86);
+      --text: #f7fafc;
+      --muted: #b4c3d9;
+      --line: rgba(173, 189, 214, 0.15);
+      --accent: #f59e0b;
+      --accent-2: #38bdf8;
+      --shadow: 0 28px 80px rgba(0, 0, 0, 0.38);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 10%, rgba(245, 158, 11, 0.2), transparent 22%),
+        radial-gradient(circle at 85% 20%, rgba(56, 189, 248, 0.18), transparent 24%),
+        linear-gradient(180deg, #060b18 0%, var(--bg) 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+      background-size: 72px 72px;
+      opacity: 0.18;
+      mask-image: radial-gradient(circle at center, black 26%, transparent 86%);
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: min(1080px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 22px 0 64px;
+    }
+
+    header, .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    header { margin-bottom: 28px; }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.9rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.24), rgba(56, 189, 248, 0.18));
+      border: 1px solid rgba(173, 189, 214, 0.18);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      background: rgba(24, 19, 6, 0.5);
+      color: #ffd28b;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr);
+      gap: 24px;
+      align-items: center;
+      padding: 26px 0 20px;
+    }
+
+    h1 {
+      margin: 12px 0 0;
+      font-size: clamp(2.7rem, 6vw, 5.3rem);
+      line-height: 0.96;
+      letter-spacing: -0.045em;
+      max-width: 12ch;
+    }
+
+    .lede {
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(1rem, 1.8vw, 1.2rem);
+      line-height: 1.7;
+      max-width: 56ch;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 50px;
+      padding: 0 18px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      font-weight: 700;
+      transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+    }
+
+    .button:hover { transform: translateY(-1px); }
+
+    .button-primary {
+      background: linear-gradient(135deg, var(--accent), #fb7185);
+      color: #150b03;
+      box-shadow: 0 18px 36px rgba(245, 158, 11, 0.22);
+    }
+
+    .button-secondary {
+      border-color: rgba(173, 189, 214, 0.2);
+      background: rgba(10, 16, 32, 0.7);
+      color: var(--text);
+    }
+
+    .video-card, .card {
+      border-radius: 26px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .video-card { padding: 18px; }
+
+    .video-frame {
+      aspect-ratio: 16 / 9;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background:
+        radial-gradient(circle at 25% 20%, rgba(245, 158, 11, 0.32), transparent 30%),
+        radial-gradient(circle at 80% 70%, rgba(56, 189, 248, 0.3), transparent 24%),
+        linear-gradient(135deg, rgba(4, 7, 16, 0.96), rgba(12, 20, 36, 0.92));
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .play {
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      margin-bottom: 16px;
+      font-size: 2rem;
+    }
+
+    .video-frame strong { display: block; font-size: 1.32rem; margin-bottom: 8px; }
+    .video-frame p { margin: 0; color: var(--muted); line-height: 1.6; max-width: 34ch; }
+
+    section { margin-top: 24px; }
+
+    .card {
+      padding: 24px;
+      background: var(--surface-soft);
+    }
+
+    .section-head { align-items: end; margin-bottom: 16px; }
+    .section-head h2 {
+      margin: 0;
+      font-size: clamp(1.6rem, 3vw, 2.3rem);
+      letter-spacing: -0.03em;
+    }
+
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 62ch;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .step, .callout {
+      border-radius: 18px;
+      padding: 18px;
+      border: 1px solid rgba(173, 189, 214, 0.14);
+      background: rgba(7, 13, 25, 0.68);
+    }
+
+    .step strong, .callout strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1.03rem;
+    }
+
+    .step p, .callout p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .download-band {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .download-box {
+      border-radius: 22px;
+      padding: 22px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(56, 189, 248, 0.11));
+      border: 1px solid rgba(245, 158, 11, 0.16);
+    }
+
+    .download-box h3 { margin: 0 0 8px; font-size: 1.35rem; }
+    .download-box p { margin: 0; color: var(--muted); line-height: 1.65; }
+
+    .cta-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    footer {
+      padding: 22px 0 0;
+      color: var(--muted);
+      font-size: 0.93rem;
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .hero, .download-band, .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      header, .section-head {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .cta-stack { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand"><div class="mark">V</div><span>VPSKit Bundle</span></div>
+      <div class="badge">Redacted delivery by default</div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <div class="badge">Made for YouTube traffic</div>
+        <h1>Watch the demo. Download the bundle. Start using it today.</h1>
+        <p class="lede">
+          VPSKit turns a technical install into a clean bundle download with a simple promise: safe exports,
+          clear instructions, and a fast handoff that viewers can understand in one screen.
+        </p>
+        <div class="actions">
+          <a class="button button-primary" href="#download">Download Bundle</a>
+          <a class="button button-secondary" href="#demo">View Live Demo</a>
+        </div>
+      </div>
+
+      <aside class="video-card" id="demo">
+        <div class="video-frame" aria-label="Embedded demo placeholder">
+          <div>
+            <div class="play">▶</div>
+            <strong>Demo clip placeholder</strong>
+            <p>Replace this area with a short GIF or video showing the bundle and download flow.</p>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div><h2>Why this page converts</h2></div>
+        <p>It answers the three questions that matter on YouTube: what it is, why it is safe, and how to get it.</p>
+      </div>
+      <div class="grid grid-3">
+        <div class="step"><strong>1. Clear promise</strong><p>Lead with a bundle download, not a software lecture. The offer is obvious in seconds.</p></div>
+        <div class="step"><strong>2. Show the proof</strong><p>Use the demo placeholder to demonstrate the output and reduce uncertainty before the click.</p></div>
+        <div class="step"><strong>3. One action</strong><p>Keep the path simple: watch, trust, download. No extra navigation clutter.</p></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div><h2>Trust signals</h2></div>
+        <p>Short, visible trust markers are more effective here than long technical detail.</p>
+      </div>
+      <div class="grid grid-3">
+        <div class="callout"><strong>QA checked</strong><p>Bundles are expected to pass the existing QA flow before release packaging.</p></div>
+        <div class="callout"><strong>Redaction on</strong><p>Customer-facing exports stay redacted so secrets do not leak into public downloads.</p></div>
+        <div class="callout"><strong>Protocol support</strong><p>VLESS Reality, Hysteria2, and Trojan compatibility are all part of the delivery story.</p></div>
+      </div>
+    </section>
+
+    <section class="card" id="download">
+      <div class="download-band">
+        <div class="download-box">
+          <h3>Ready to convert viewers into bundle downloads?</h3>
+          <p>Keep the CTA in view, keep the language plain, and send the user to a download that feels like a product instead of a configuration dump.</p>
+        </div>
+        <div class="cta-stack">
+          <a class="button button-primary" href="vpskit-client-bundle-v0.7.0-beta.zip" download>Download Bundle</a>
+          <a class="button button-secondary" href="#demo">View Live Demo</a>
+        </div>
+      </div>
+    </section>
+
+    <footer>SEO-friendly landing page for YouTube viewers who want the fastest route from video to bundle.</footer>
+  </main>
+</body>
+</html>

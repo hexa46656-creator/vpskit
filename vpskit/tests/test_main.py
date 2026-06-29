@@ -21,6 +21,6 @@ def test_runtime_services_returns_configured_api_service():
         {
             "name": "api",
             "state": "configured",
-            "detail": "FastAPI application is importable",
+            "detail": "FastAPI production control plane is importable",
         }
     ]

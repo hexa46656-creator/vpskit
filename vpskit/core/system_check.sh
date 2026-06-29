@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC1091
+if [ -f "${BASH_SOURCE[0]%/*}/dns_safety.sh" ]; then
+  source "${BASH_SOURCE[0]%/*}/dns_safety.sh"
+fi
+
 vpskit_require_root() {
   local effective_uid="${VPSKIT_TEST_EUID:-${EUID}}"
 
@@ -8,6 +13,16 @@ vpskit_require_root() {
   fi
 
   vpskit_die "root privileges required"
+}
+
+vpskit_system_dns_safety_check() {
+  local dns_target="${VPSKIT_DNS_TARGET:-}"
+
+  if [ -z "${dns_target}" ]; then
+    return 0
+  fi
+
+  vpskit_assert_dns_safety "${dns_target}"
 }
 
 vpskit_detect_os_id() {
@@ -359,4 +374,8 @@ vpskit_system_inspection_summary() {
   printf 'UFW_AVAILABLE=%s\n' "$(vpskit_bool_word vpskit_ufw_available)"
   printf 'TCP_443_AVAILABLE=%s\n' "$(vpskit_bool_word vpskit_check_tcp_port_available 443)"
   printf 'UDP_443_AVAILABLE=%s\n' "$(vpskit_bool_word vpskit_check_udp_port_available 443)"
+  if [ -n "${VPSKIT_DNS_TARGET:-}" ]; then
+    vpskit_system_dns_safety_check || return 1
+    printf 'DNS_TARGET=%s\n' "${VPSKIT_DNS_TARGET}"
+  fi
 }

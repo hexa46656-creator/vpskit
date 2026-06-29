@@ -1,0 +1,85 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate shell scripts
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' script; do
+            bash -n "$script"
+          done < <(find . \
+            -path './.git' -prune -o \
+            -path './.worktrees' -prune -o \
+            -path './.mypy_cache' -prune -o \
+            -path './.pytest_cache' -prune -o \
+            -path './.ruff_cache' -prune -o \
+            -type f -name '*.sh' -print0)
+
+      - name: Validate Python
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q .
+
+      - name: Generate changelog
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          PREV_TAG="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)"
+          {
+            echo "# VPSKit ${TAG}"
+            echo
+            echo "## Release Notes"
+            if [[ -n "${PREV_TAG}" ]]; then
+              git log --no-merges --pretty=format:'- %s (%h)' "${PREV_TAG}..${GITHUB_SHA}"
+            else
+              git log --no-merges --pretty=format:'- %s (%h)' -n 50 "${GITHUB_SHA}"
+            fi
+          } > release-notes.md
+
+      - name: Build release zip
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          ZIP_NAME="vpskit-${TAG}.zip"
+          zip -r "${ZIP_NAME}" . \
+            -x '.git/*' \
+            -x '.worktrees/*' \
+            -x '.mypy_cache/*' \
+            -x '.pytest_cache/*' \
+            -x '.ruff_cache/*' \
+            -x '*/__pycache__/*' \
+            -x 'releases/*'
+          echo "ZIP_NAME=${ZIP_NAME}" >> "${GITHUB_ENV}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ env.ZIP_NAME }}
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ZIP_NAME }}
+          body_path: release-notes.md
+          tag_name: ${{ github.ref_name }}

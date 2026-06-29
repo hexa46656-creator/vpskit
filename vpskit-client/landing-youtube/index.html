@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VPSKit | YouTube Landing</title>
+  <meta name="description" content="VPSKit is a stable infra toolkit with QA, verify, bundle, and release packaging.">
+  <meta name="robots" content="index,follow">
+  <meta property="og:title" content="VPSKit | YouTube Landing">
+  <meta property="og:description" content="Simple release page for traffic from YouTube descriptions and videos.">
+  <style>
+    :root {
+      --bg: #0f1729;
+      --bg-2: #111c33;
+      --card: #16243f;
+      --text: #f5f8ff;
+      --muted: #a8b9d6;
+      --accent: #6ee7f9;
+      --accent-2: #fb7185;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(110, 231, 249, 0.12), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(251, 113, 133, 0.12), transparent 25%),
+        linear-gradient(180deg, #07101f 0%, var(--bg) 100%);
+    }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 32px 18px 64px; }
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 0.9fr;
+      gap: 24px;
+      align-items: center;
+      min-height: 84vh;
+    }
+    .tag {
+      display: inline-flex;
+      padding: 7px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 999px;
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    h1 {
+      font-size: clamp(2.6rem, 7vw, 5rem);
+      line-height: 0.96;
+      margin: 16px 0 14px;
+      letter-spacing: -0.05em;
+    }
+    p { color: var(--muted); line-height: 1.7; font-size: 1.02rem; }
+    .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 18px;
+      border-radius: 14px;
+      text-decoration: none;
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .btn.primary {
+      color: #08111f;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), #d1fae5);
+    }
+    .video {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 24px;
+      min-height: 420px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 24px;
+    }
+    .video strong { display: block; font-size: 1.2rem; margin-bottom: 8px; }
+    .video span { color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 22px;
+    }
+    .card {
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+    }
+    .card h2 { margin: 0 0 8px; font-size: 1.05rem; }
+    .card p { margin: 0; }
+    @media (max-width: 900px) {
+      .hero, .grid { grid-template-columns: 1fr; }
+      .hero { min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <span class="tag">YouTube traffic landing</span>
+        <h1>Simple release page for VPSKit viewers.</h1>
+        <p>
+          VPSKit is a stable infra toolkit for QA, verify, bundle, demo, and
+          release packaging. This page keeps the message clear so viewers can
+          move straight to the public release.
+        </p>
+        <div class="cta-row">
+          <a class="btn primary" href="https://github.com/">Download Release</a>
+          <a class="btn" href="https://github.com/">View GitHub</a>
+        </div>
+        <div class="grid">
+          <article class="card">
+            <h2>Fast release path</h2>
+            <p>One click from the video to the public release page.</p>
+          </article>
+          <article class="card">
+            <h2>Clear value</h2>
+            <p>Infrastructure checks, bundle output, and a clean demo flow.</p>
+          </article>
+          <article class="card">
+            <h2>Offline-safe</h2>
+            <p>No hidden automation, no external side effects, just static assets.</p>
+          </article>
+        </div>
+      </div>
+      <aside class="video" aria-label="demo placeholder">
+        <div>
+          <strong>Demo Placeholder</strong>
+          <span>Replace with a short GIF or video preview.</span>
+        </div>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

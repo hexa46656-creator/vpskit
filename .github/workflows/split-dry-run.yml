@@ -1,0 +1,44 @@
+name: VPSKit Split Dry Run
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        repo:
+          - vpskit-core
+          - vpskit-installers
+          - vpskit-contracts
+          - vpskit-ui
+          - vpskit-landing
+          - vpskit-saas
+          - vpskit-tools
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Freeze validation
+        run: bash scripts/ci/freeze-check.sh
+      - name: Manifest generation
+        run: bash scripts/ci/generate-manifest.sh > "$RUNNER_TEMP/vpskit-split-manifest.json"
+      - name: Dependency analysis
+        run: bash scripts/ci/dependency-analyzer.sh
+      - name: Overlap detection
+        run: bash scripts/ci/overlap-detector.sh
+      - name: Dry-run split simulation
+        run: bash scripts/ci/dry-run-split.sh --repo "${{ matrix.repo }}"
+
+  approval-gate:
+    runs-on: ubuntu-latest
+    needs: dry-run
+    environment:
+      name: split-approval
+    steps:
+      - name: Manual approval marker
+        run: echo "READY FOR MANUAL APPROVAL"
+      - name: Approval marker
+        run: echo "A human must review the dry-run output before any apply path is considered."

@@ -52,7 +52,7 @@ vpskit_rollback_run() {
     rollback_command="$(printf '%s\n' "${VPSKIT_ROLLBACK_STACK}" | sed -n "${line_count}p")"
     if vpskit_is_dry_run; then
       vpskit_dry_run_log "ROLLBACK ${rollback_command}"
-    elif ! bash -c "${rollback_command}"; then
+    elif ! vpskit_safe_run_script "${rollback_command}"; then
       status=1
     fi
     line_count=$((line_count - 1))

@@ -8,14 +8,8 @@ source "${VPSKIT_VERIFY_DIR}/../core/common.sh"
 # shellcheck source=../core/system_check.sh
 source "${VPSKIT_VERIFY_DIR}/../core/system_check.sh"
 # shellcheck disable=SC1091
-# shellcheck source=../install/vless_reality.sh
-source "${VPSKIT_VERIFY_DIR}/../install/vless_reality.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../install/hysteria2.sh
-source "${VPSKIT_VERIFY_DIR}/../install/hysteria2.sh"
-# shellcheck disable=SC1091
-# shellcheck source=../install/trojan.sh
-source "${VPSKIT_VERIFY_DIR}/../install/trojan.sh"
+# shellcheck source=../core/public_surface.sh
+source "${VPSKIT_VERIFY_DIR}/../core/public_surface.sh"
 
 vpskit_verify_managed_user_exists() {
   local managed_user="$1"

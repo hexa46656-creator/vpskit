@@ -8,8 +8,8 @@ source "${VPSKIT_NETWORK_DIR}/../core/common.sh"
 # shellcheck source=../core/system_check.sh
 source "${VPSKIT_NETWORK_DIR}/../core/system_check.sh"
 # shellcheck disable=SC1091
-# shellcheck source=../install/hysteria2.sh
-source "${VPSKIT_NETWORK_DIR}/../install/hysteria2.sh"
+# shellcheck source=../core/public_surface.sh
+source "${VPSKIT_NETWORK_DIR}/../core/public_surface.sh"
 
 vpskit_hysteria2_installed() {
   local bin_path

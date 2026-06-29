@@ -59,11 +59,20 @@ setup() {
   [ "$output" = "open" ]
 }
 
-@test "release manifest exists and is valid json" {
-  local manifest="${PROJECT_ROOT}/release/v2.0.0-beta-manifest.json"
+@test "immutable release snapshot exists and is valid json" {
+  local manifest="${PROJECT_ROOT}/releases/v1.1.0/manifest.json"
   [ -f "${manifest}" ]
-  run python3 -c 'import json,sys; data=json.load(open(sys.argv[1], encoding="utf-8")); assert data["version"] == "v2.0.0-beta"' "${manifest}"
+  run python3 -c 'import json,sys; data=json.load(open(sys.argv[1], encoding="utf-8")); assert data["version"] == "v1.1.0"' "${manifest}"
   [ "$status" -eq 0 ]
+}
+
+@test "commit lock matches current head" {
+  local locked_commit
+  locked_commit="$(tr -d '\n' < "${PROJECT_ROOT}/.vpskit.lock")"
+
+  run git -C "${PROJECT_ROOT}" rev-parse HEAD
+  [ "$status" -eq 0 ]
+  [ "$output" = "${locked_commit}" ]
 }
 
 @test "README after-install verification examples remain accurate" {

@@ -1,0 +1,26 @@
+[Unit]
+Description=VPSKit API Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vpskit
+Group=vpskit
+WorkingDirectory=/opt/vpskit
+EnvironmentFile=/etc/vpskit.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/vpskit/venv/bin/python -m vpskit.server
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vpskit-api
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+StateDirectory=vpskit
+
+[Install]
+WantedBy=multi-user.target

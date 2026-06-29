@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC1091
+# shellcheck source=../core/installer_runtime.sh
+source "${BASH_SOURCE[0]%/*}/../core/installer_runtime.sh"
+
 VPSKIT_HYSTERIA2_DEFAULT_RELEASE_TAG="app/v2.9.2"
 
 vpskit_hysteria2_bin_path() {
@@ -252,17 +256,17 @@ vpskit_hysteria2_install_binary() {
   bin_dir="$(dirname "${bin_path}")"
 
   if vpskit_is_test_mode; then
-    mkdir -p "${bin_dir}"
+    vpskit_run_mutation mkdir -p "${bin_dir}" || return 1
     if [ -e "${bin_path}" ]; then
       backup_path="$(mktemp)"
-      cp -a "${bin_path}" "${backup_path}"
+      vpskit_run_mutation cp -a "${bin_path}" "${backup_path}" || return 1
       vpskit_rollback_add "cp -a $(vpskit_shell_quote "${backup_path}") $(vpskit_shell_quote "${bin_path}")" || return 1
       vpskit_rollback_add "rm -f $(vpskit_shell_quote "${backup_path}")" || return 1
     else
       vpskit_rollback_add "rm -f $(vpskit_shell_quote "${bin_path}")" || return 1
     fi
-    printf '#!/usr/bin/env bash\nexit 0\n' >"${bin_path}"
-    chmod 0755 "${bin_path}"
+    vpskit_write_managed_file "${bin_path}" 0755 '#!/usr/bin/env bash
+exit 0'
     if [ -n "${VPSKIT_HYSTERIA2_INSTALL_COMMAND:-}" ]; then
       if [ -n "${VPSKIT_TEST_COMMAND_LOG:-}" ]; then
         printf 'RUN %s\n' "${VPSKIT_HYSTERIA2_INSTALL_COMMAND}" >>"${VPSKIT_TEST_COMMAND_LOG}"
@@ -274,7 +278,7 @@ vpskit_hysteria2_install_binary() {
   fi
 
   if [ -n "${VPSKIT_HYSTERIA2_INSTALL_COMMAND:-}" ]; then
-    bash -lc "${VPSKIT_HYSTERIA2_INSTALL_COMMAND}" || return 1
+    vpskit_run_mutation bash -lc "${VPSKIT_HYSTERIA2_INSTALL_COMMAND}" || return 1
     [ -x "${bin_path}" ] || vpskit_die "hysteria binary is not available after installer command"
     return $?
   fi
@@ -285,10 +289,13 @@ vpskit_hysteria2_install_binary() {
     return 1
   fi
 
-  mkdir -p "${bin_dir}"
+  vpskit_run_mutation mkdir -p "${bin_dir}" || return 1
   if [ -e "${bin_path}" ]; then
     backup_path="$(mktemp)"
-    cp -a "${bin_path}" "${backup_path}"
+    vpskit_run_mutation cp -a "${bin_path}" "${backup_path}" || {
+      rm -f "${tmp_path}"
+      return 1
+    }
     vpskit_rollback_add "cp -a $(vpskit_shell_quote "${backup_path}") $(vpskit_shell_quote "${bin_path}")" || {
       rm -f "${tmp_path}" "${backup_path}"
       return 1
@@ -303,7 +310,7 @@ vpskit_hysteria2_install_binary() {
       return 1
     }
   fi
-  install -m 0755 "${tmp_path}" "${bin_path}" || {
+  vpskit_run_mutation install -m 0755 "${tmp_path}" "${bin_path}" || {
     rm -f "${tmp_path}"
     return 1
   }
@@ -325,7 +332,7 @@ vpskit_hysteria2_generate_cert_bundle() {
     return 0
   fi
 
-  mkdir -p "$(dirname "${cert_path}")"
+  vpskit_run_mutation mkdir -p "$(dirname "${cert_path}")" || return 1
   tmp_config="$(mktemp)"
   cat >"${tmp_config}" <<EOF
 [ req ]
@@ -346,8 +353,8 @@ EOF
     return 1
   fi
 
-  chmod 0600 "${key_path}"
-  chmod 0644 "${cert_path}"
+  vpskit_run_mutation chmod 0600 "${key_path}"
+  vpskit_run_mutation chmod 0644 "${cert_path}"
   rm -f "${tmp_config}"
   vpskit_hysteria2_cert_pin_sha256 "${cert_path}"
 }
@@ -555,8 +562,8 @@ EOF
 }
 
 vpskit_hysteria2_ensure_root_owns_system_paths() {
-  mkdir -p "$(dirname "$(vpskit_hysteria2_config_path)")"
-  mkdir -p "$(dirname "$(vpskit_hysteria2_subscription_file)")"
+  vpskit_run_mutation mkdir -p "$(dirname "$(vpskit_hysteria2_config_path)")" || return 1
+  vpskit_run_mutation mkdir -p "$(dirname "$(vpskit_hysteria2_subscription_file)")" || return 1
 }
 
 vpskit_install_hysteria2() {
@@ -639,6 +646,10 @@ vpskit_install_hysteria2() {
   if [ "${status}" -eq 0 ] && { [ -z "${server_ip}" ] || [ -z "${password}" ]; }; then
     vpskit_die "failed to generate Hysteria2 values"
     status=1
+  fi
+
+  if [ "${status}" -eq 0 ]; then
+    vpskit_assert_dns_safety "${server_ip}" || status=$?
   fi
 
   if [ "${status}" -eq 0 ]; then

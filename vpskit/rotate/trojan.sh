@@ -15,8 +15,8 @@ source "${VPSKIT_TROJAN_ROTATE_DIR}/../core/install_lock.sh"
 # shellcheck source=../core/transaction.sh
 source "${VPSKIT_TROJAN_ROTATE_DIR}/../core/transaction.sh"
 # shellcheck disable=SC1091
-# shellcheck source=../install/trojan.sh
-source "${VPSKIT_TROJAN_ROTATE_DIR}/../install/trojan.sh"
+# shellcheck source=../core/public_surface.sh
+source "${VPSKIT_TROJAN_ROTATE_DIR}/../core/public_surface.sh"
 
 vpskit_trojan_rotate_new_password() {
   if [ -n "${VPSKIT_TEST_TROJAN_ROTATE_PASSWORD:-}" ]; then
@@ -246,7 +246,11 @@ vpskit_rotate_trojan() {
   }
 
   candidate_config_path="$(vpskit_trojan_candidate_xray_config_path)"
-  printf '%s\n' "${rendered_config}" >"${candidate_config_path}"
+  vpskit_write_managed_file "${candidate_config_path}" 0644 "${rendered_config}" || {
+    printf 'TROJAN_ROTATE=fail reason=xray_config_write_failed\n'
+    vpskit_transaction_abort
+    return 1
+  }
   if ! vpskit_trojan_validate_candidate_xray_config "${xray_bin}" "${candidate_config_path}"; then
     rm -f "${candidate_config_path}"
     printf 'TROJAN_ROTATE=fail reason=xray_config_invalid\n'

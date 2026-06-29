@@ -68,6 +68,9 @@ vpskit_shadowrocket_repair() {
   local input=""
   local output=""
   local repaired
+  local payload_path
+  local output_path_quoted
+  local payload_path_quoted
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -99,7 +102,18 @@ EOF
   )"
 
   if [ -n "${output}" ]; then
-    printf '%s\n' "${repaired}" >"${output}"
+    payload_path="$(mktemp "${TMPDIR:-/tmp}/vpskit-shadowrocket.XXXXXX")" || return 1
+    printf '%s\n' "${repaired}" >"${payload_path}" || {
+      rm -f "${payload_path}"
+      return 1
+    }
+    payload_path_quoted="$(vpskit_shell_quote "${payload_path}")"
+    output_path_quoted="$(vpskit_shell_quote "${output}")"
+    if ! vpskit_safe_run_script "cp ${payload_path_quoted} ${output_path_quoted}"; then
+      rm -f "${payload_path}"
+      return 1
+    fi
+    rm -f "${payload_path}"
   else
     printf '%s\n' "${repaired}"
   fi

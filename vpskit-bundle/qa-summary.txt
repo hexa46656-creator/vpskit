@@ -1,0 +1,75 @@
+VPSKIT_QA_VERSION=v0.7.0-beta
+QA_MODE=redacted
+QA_READ_ONLY=yes
+SENSITIVE_OUTPUT=redacted
+XRAY_BINARY=pass path=/var/folders/06/np7s1r_162n5wfyzjxscdrn40000gn/T/tmp.Y8OpP5cTcu/rootfs/usr/local/bin/xray
+XRAY_SERVICE=pass state=active
+TCP_443_LISTENER=pass service=xray
+SUBSCRIPTION_FILE=pass path=/var/folders/06/np7s1r_162n5wfyzjxscdrn40000gn/T/tmp.Y8OpP5cTcu/rootfs/var/lib/vpskit/vless-reality.txt
+UFW_443_TCP=pass status=active rule=present
+VERIFY_VLESS_REALITY=pass
+HYSTERIA2_BINARY=pass path=/var/folders/06/np7s1r_162n5wfyzjxscdrn40000gn/T/tmp.Y8OpP5cTcu/rootfs/usr/local/bin/hysteria
+HYSTERIA2_CONFIG=pass path=/var/folders/06/np7s1r_162n5wfyzjxscdrn40000gn/T/tmp.Y8OpP5cTcu/rootfs/etc/hysteria/config.yaml
+HYSTERIA2_SUBSCRIPTION_FILE=pass path=/var/folders/06/np7s1r_162n5wfyzjxscdrn40000gn/T/tmp.Y8OpP5cTcu/rootfs/var/lib/vpskit/hysteria2.yaml
+HYSTERIA2_SERVICE=pass state=active
+UDP_443_LISTENER=pass service=hysteria
+UFW_443_UDP=pass status=active rule=present
+VERIFY_HYSTERIA2=pass
+TROJAN_BINARY=pass path=/var/folders/06/np7s1r_162n5wfyzjxscdrn40000gn/T/tmp.Y8OpP5cTcu/rootfs/usr/local/bin/xray
+TROJAN_CONFIG=pass
+TROJAN_SUBSCRIPTION_FILE=pass path=/var/folders/06/np7s1r_162n5wfyzjxscdrn40000gn/T/tmp.Y8OpP5cTcu/rootfs/var/lib/vpskit/trojan.yaml
+TROJAN_SERVICE=pass state=active service=xray
+TCP_8443_LISTENER=pass service=xray
+UFW_8443_TCP=pass status=active rule=present
+VLESS_REALITY_PRESERVED=pass tcp_443=bound service=xray
+VERIFY_TROJAN=pass
+OS_ID=ubuntu
+OS_VERSION_ID=24.04
+OS_VERSION_CODENAME=noble
+SUPPORTED_OS=yes
+SYSTEMD_AVAILABLE=yes
+UFW_AVAILABLE=yes
+TCP_443_AVAILABLE=yes
+UDP_443_AVAILABLE=ERROR udp port 443 is already in use
+no
+TCP_443_STATUS=unverified
+DNS_HEALTH=ok
+TCP_PROBE=open
+SUBSCRIPTION_FILE=missing
+REALITY_SERVER_NAME=www.cloudflare.com
+REALITY_DEST=www.cloudflare.com:443
+REALITY_DEST_HOST=www.cloudflare.com
+REALITY_CONFIG=ok reason=serverName_dest_host_match
+ok
+REALITY_TARGET_RISK=normal
+TROJAN_PORT=8443/tcp
+TROJAN_INSTALLED=yes
+TROJAN_COMPATIBILITY_MODE=compatibility_fallback
+TROJAN_RUNTIME=xray
+TROJAN_TLS_MODE=self_signed
+TROJAN_BINARY=present
+TROJAN_CONFIG=present
+TROJAN_SERVICE=active
+TROJAN_TCP_8443=bound
+TROJAN_SUBSCRIPTION_FILE=present
+UFW_8443_TCP=pass status=active rule=present
+HYSTERIA2_PORT=443/udp
+HYSTERIA2_UDP_NOTE=local_listener_and_firewall_state_only
+HYSTERIA2_INSTALLED=yes
+HYSTERIA2_BINARY=present
+HYSTERIA2_CONFIG=present
+HYSTERIA2_SERVICE=active
+HYSTERIA2_UDP_443=bound
+HYSTERIA2_SUBSCRIPTION_FILE=present
+UFW_443_UDP=pass status=active rule=present
+TROJAN_EXPORT_REDACTED=pass
+XRAY_CONFIG_TEST=pass path=/var/folders/06/np7s1r_162n5wfyzjxscdrn40000gn/T/tmp.Y8OpP5cTcu/rootfs/usr/local/etc/xray/config.json
+XRAY_SERVICE_STATUS=active
+HYSTERIA2_SERVICE_STATUS=active
+TROJAN_SERVICE_STATUS=active
+TCP_443=xray
+UDP_443=hysteria
+TCP_8443=xray
+UFW_STATUS=active
+DOCTOR=pass
+VPSKIT_QA=pass
