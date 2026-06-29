@@ -236,12 +236,16 @@ def test_dashboard_and_static_site_files_exist(tmp_path):
     assert "curl -sSL https://alexhexa.com/i/" in dashboard.text
 
     site_root = Path(__file__).resolve().parents[2] / "site"
-    for file_name in ("index.html", "pricing.html", "docs.html", "success.html"):
-        text = (site_root / file_name).read_text()
-        assert "https://alexhexa.com/api/" in text
-
     index_text = (site_root / "index.html").read_text()
+    pricing_text = (site_root / "pricing.html").read_text()
+
     assert "VPSKit" in index_text
     assert "Deploy your private VPN infrastructure in 60 seconds." in index_text
-    assert "Get Access" in index_text
-    assert "Tap PayPal button to complete checkout" in index_text
+    assert '/pricing.html' in index_text
+    assert "Pricing" in index_text
+
+    assert "Get Access" in pricing_text
+    assert "Basic" in pricing_text
+    assert "One install token, the core deployment command" in pricing_text
+    assert "/api/paypal/config" in pricing_text
+    assert "/api/checkout/paypal?plan=basic" in pricing_text

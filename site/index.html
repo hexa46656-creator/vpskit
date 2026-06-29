@@ -11,7 +11,7 @@
     <a class="brand" href="/" aria-label="VPSKit home">VPSKit</a>
     <nav>
       <a href="#features">Features</a>
-      <a href="#access">Get Access</a>
+      <a href="/pricing.html">Get Access</a>
       <a href="/pricing.html">Pricing</a>
       <a href="/docs.html">FAQ</a>
     </nav>
@@ -55,21 +55,12 @@
 
     <section class="payment" id="access">
       <div class="section-head">
-        <h2>Get Access</h2>
-        <p>After payment, you will receive a one-time install command.</p>
+        <h2>Pricing</h2>
+        <p>Review the plans and jump to the pricing page to complete checkout.</p>
       </div>
 
-      <div class="install-shell" aria-label="Install command">
-        <code id="install-command">curl -sSL https://alexhexa.com/i/TOKEN | bash</code>
-        <button class="copy-button" type="button" data-copy-target="install-command" aria-label="Copy install command">Copy</button>
-      </div>
-
-      <div class="paypal-panel">
-        <div id="paypal-button-container" class="paypal-button-container">
-          <a class="button button--paypal" href="/api/checkout/paypal?plan=basic">PayPal checkout</a>
-        </div>
-        <p class="hint">📱 Mobile users: Tap PayPal button to complete checkout</p>
-        <p class="pay-status" id="paypal-status" aria-live="polite"></p>
+      <div class="paypal-button-container">
+        <a class="button button--paypal" href="/pricing.html">View Pricing</a>
       </div>
     </section>
   </main>
@@ -77,92 +68,5 @@
   <footer class="footer">
     <span>VPSKit</span>
   </footer>
-
-  <script>
-    const copyButton = document.querySelector('.copy-button');
-    const installCommand = document.getElementById('install-command');
-    copyButton.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(installCommand.textContent.trim());
-        copyButton.textContent = 'Copied';
-        window.setTimeout(() => { copyButton.textContent = 'Copy'; }, 1500);
-      } catch (error) {
-        copyButton.textContent = 'Copy failed';
-        window.setTimeout(() => { copyButton.textContent = 'Copy'; }, 1500);
-      }
-    });
-
-    const status = document.getElementById('paypal-status');
-    const buttonContainer = document.getElementById('paypal-button-container');
-
-    async function loadPayPal() {
-      try {
-        const configResponse = await fetch('/api/paypal/config');
-        if (!configResponse.ok) {
-          throw new Error('PayPal checkout is unavailable right now.');
-        }
-
-        const config = await configResponse.json();
-        const script = document.createElement('script');
-        script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(config.client_id)}&currency=${encodeURIComponent(config.currency || 'USD')}&intent=capture&disable-funding=card,paylater`;
-        script.async = true;
-        script.onload = () => {
-          if (!window.paypal || !window.paypal.Buttons) {
-            status.textContent = 'PayPal button failed to load.';
-            return;
-          }
-
-          buttonContainer.innerHTML = '';
-          window.paypal.Buttons({
-            fundingSource: window.paypal.FUNDING.PAYPAL,
-            style: {
-              layout: 'vertical',
-              color: 'blue',
-              shape: 'rect',
-              label: 'paypal',
-              tagline: false,
-              height: 48
-            },
-            createOrder: async () => {
-              const response = await fetch('/api/paypal/create-order', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ plan: 'basic' })
-              });
-              const data = await response.json();
-              if (!response.ok) {
-                throw new Error(data.detail || 'Unable to create PayPal order.');
-              }
-              return data.order_id;
-            },
-            onApprove: async (data) => {
-              status.textContent = 'Payment approved. Completing checkout...';
-              const response = await fetch('/api/paypal/capture-order', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ order_id: data.orderID })
-              });
-              const payload = await response.json();
-              if (!response.ok) {
-                throw new Error(payload.detail || 'Unable to capture PayPal order.');
-              }
-              window.location.href = payload.redirect_url || '/success.html';
-            },
-            onError: (error) => {
-              status.textContent = error && error.message ? error.message : 'PayPal checkout failed.';
-            }
-          }).render('#paypal-button-container');
-        };
-        script.onerror = () => {
-          status.textContent = 'PayPal checkout script failed to load.';
-        };
-        document.head.appendChild(script);
-      } catch (error) {
-        status.textContent = error.message || 'PayPal checkout is unavailable right now.';
-      }
-    }
-
-    loadPayPal();
-  </script>
 </body>
 </html>

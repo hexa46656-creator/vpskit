@@ -7,35 +7,202 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <header class="nav"><a class="brand" href="/">VPSKit</a><nav><a href="/docs.html">Docs</a></nav></header>
-  <main>
-    <section class="page-head"><h1>Pricing</h1><p>Choose a plan and provision access automatically after payment.</p></section>
-    <section class="pricing">
+  <header class="nav">
+    <a class="brand" href="/" aria-label="VPSKit home">VPSKit</a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/docs.html">FAQ</a>
+    </nav>
+  </header>
+
+  <main class="pricing-page">
+    <section class="page-head">
+      <p>Get Access</p>
+      <h1>Pricing</h1>
+      <p>Choose the plan that matches the amount of setup help, handoff detail, and support you need.</p>
+    </section>
+
+    <section class="pricing" aria-label="VPSKit plans">
       <article>
-        <h2>Basic</h2>
-        <p class="price">$9</p>
-        <a id="paypal-basic" class="button pay-button" href="https://alexhexa.com/api/checkout/paypal?plan=basic">PayPal checkout</a>
+        <div class="plan-head">
+          <div>
+            <h2>Basic</h2>
+            <p class="plan-subtitle">Single-server access for a simple launch.</p>
+          </div>
+          <p class="price">$9</p>
+        </div>
+        <p class="plan-copy">
+          One install token, the core deployment command, and the starter notes you need to get a single VPS online.
+        </p>
+        <ul class="plan-features">
+          <li>One-time install handoff</li>
+          <li>Core setup notes</li>
+          <li>Basic troubleshooting checklist</li>
+        </ul>
+        <div class="paypal-panel plan-paypal">
+          <div class="paypal-button-container" data-plan="basic">
+            <a class="button button--paypal pay-button" href="/api/checkout/paypal?plan=basic">PayPal checkout</a>
+          </div>
+          <p class="hint">Mobile browsers can hand off to the PayPal app when it is installed.</p>
+          <p class="pay-status" id="paypal-status-basic" aria-live="polite"></p>
+        </div>
       </article>
+
       <article>
-        <h2>Pro</h2>
-        <p class="price">$19</p>
-        <a id="paypal-pro" class="button pay-button" href="https://alexhexa.com/api/checkout/paypal?plan=pro">PayPal checkout</a>
+        <div class="plan-head">
+          <div>
+            <h2>Pro</h2>
+            <p class="plan-subtitle">Best for a fuller service handoff.</p>
+          </div>
+          <p class="price">$19</p>
+        </div>
+        <p class="plan-copy">
+          Everything in Basic, plus more detailed setup guidance, the multi-protocol layout summary, and a cleaner client handoff.
+        </p>
+        <ul class="plan-features">
+          <li>Basic plan inclusions</li>
+          <li>Expanded setup guidance</li>
+          <li>Protocol layout summary</li>
+        </ul>
+        <div class="paypal-panel plan-paypal">
+          <div class="paypal-button-container" data-plan="pro">
+            <a class="button button--paypal pay-button" href="/api/checkout/paypal?plan=pro">PayPal checkout</a>
+          </div>
+          <p class="hint">This plan keeps the checkout path simple while still supporting app handoff on mobile.</p>
+          <p class="pay-status" id="paypal-status-pro" aria-live="polite"></p>
+        </div>
       </article>
+
       <article>
-        <h2>Elite</h2>
-        <p class="price">$49</p>
-        <a id="paypal-elite" class="button pay-button" href="https://alexhexa.com/api/checkout/paypal?plan=elite">PayPal checkout</a>
+        <div class="plan-head">
+          <div>
+            <h2>Elite</h2>
+            <p class="plan-subtitle">Complete handoff with priority support.</p>
+          </div>
+          <p class="price">$49</p>
+        </div>
+        <p class="plan-copy">
+          Everything in Pro, plus the extended bundle, the full client export set, and the most complete support path.
+        </p>
+        <ul class="plan-features">
+          <li>Pro plan inclusions</li>
+          <li>Extended bundle and exports</li>
+          <li>Priority support and review</li>
+        </ul>
+        <div class="paypal-panel plan-paypal">
+          <div class="paypal-button-container" data-plan="elite">
+            <a class="button button--paypal pay-button" href="/api/checkout/paypal?plan=elite">PayPal checkout</a>
+          </div>
+          <p class="hint">PayPal app users should be taken into the app when the device supports it.</p>
+          <p class="pay-status" id="paypal-status-elite" aria-live="polite"></p>
+        </div>
       </article>
     </section>
-    <p class="hint" id="paypal-hint">On mobile, the browser may hand off to the PayPal app if it is installed.</p>
   </main>
+
   <script>
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
-    if (isMobile) {
-      document.querySelectorAll('.pay-button').forEach((button) => {
-        button.textContent = 'Open PayPal App';
-      });
+    const containers = Array.from(document.querySelectorAll('.paypal-button-container'));
+
+    async function loadPayPalButtons() {
+      try {
+        const configResponse = await fetch('/api/paypal/config');
+        if (!configResponse.ok) {
+          throw new Error('PayPal checkout is unavailable right now.');
+        }
+
+        const config = await configResponse.json();
+        const script = document.createElement('script');
+        script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(config.client_id)}&currency=${encodeURIComponent(config.currency || 'USD')}&intent=capture&disable-funding=card,paylater`;
+        script.async = true;
+        script.onload = () => {
+          if (!window.paypal || !window.paypal.Buttons) {
+            containers.forEach((container) => {
+              const plan = container.dataset.plan;
+              const status = document.getElementById(`paypal-status-${plan}`);
+              if (status) {
+                status.textContent = 'PayPal button failed to load.';
+              }
+            });
+            return;
+          }
+
+          containers.forEach((container) => {
+            const plan = container.dataset.plan;
+            const status = document.getElementById(`paypal-status-${plan}`);
+
+            if (!plan) {
+              return;
+            }
+
+            container.innerHTML = '';
+            window.paypal.Buttons({
+              fundingSource: window.paypal.FUNDING.PAYPAL,
+              style: {
+                layout: 'vertical',
+                color: 'blue',
+                shape: 'rect',
+                label: 'paypal',
+                tagline: false,
+                height: 48
+              },
+              createOrder: async () => {
+                const response = await fetch('/api/paypal/create-order', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ plan })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                  throw new Error(data.detail || 'Unable to create PayPal order.');
+                }
+                return data.order_id;
+              },
+              onApprove: async (data) => {
+                if (status) {
+                  status.textContent = 'Payment approved. Completing checkout...';
+                }
+
+                const response = await fetch('/api/paypal/capture-order', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ order_id: data.orderID })
+                });
+                const payload = await response.json();
+                if (!response.ok) {
+                  throw new Error(payload.detail || 'Unable to capture PayPal order.');
+                }
+                window.location.href = payload.redirect_url || '/success.html';
+              },
+              onError: (error) => {
+                if (status) {
+                  status.textContent = error && error.message ? error.message : 'PayPal checkout failed.';
+                }
+              }
+            }).render(container);
+          });
+        };
+        script.onerror = () => {
+          containers.forEach((container) => {
+            const plan = container.dataset.plan;
+            const status = document.getElementById(`paypal-status-${plan}`);
+            if (status) {
+              status.textContent = 'PayPal checkout script failed to load.';
+            }
+          });
+        };
+        document.head.appendChild(script);
+      } catch (error) {
+        containers.forEach((container) => {
+          const plan = container.dataset.plan;
+          const status = document.getElementById(`paypal-status-${plan}`);
+          if (status) {
+            status.textContent = error && error.message ? error.message : 'PayPal checkout is unavailable right now.';
+          }
+        });
+      }
     }
+
+    loadPayPalButtons();
   </script>
 </body>
 </html>

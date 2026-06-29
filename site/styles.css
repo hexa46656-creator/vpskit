@@ -208,6 +208,11 @@ h1 {
   margin: 0 auto;
 }
 
+.plan-paypal .paypal-button-container {
+  max-width: none;
+  margin: 0;
+}
+
 .paypal-button-container .button--paypal {
   width: 100%;
   min-height: 52px;
@@ -248,6 +253,36 @@ h1 {
   margin-top: 36px;
 }
 
+.pricing-page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 12px 24px 64px;
+}
+
+.page-head {
+  max-width: 760px;
+  padding: 26px 0 6px;
+}
+
+.page-head p:first-child {
+  margin: 0;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.page-head h1 {
+  margin-top: 10px;
+}
+
+.page-head p:last-child {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
 article {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -258,7 +293,91 @@ article {
 article h2 { margin-top: 0; }
 .page-head h1, .docs h1, .success h1 { font-size: clamp(38px, 6vw, 64px); }
 .price { font-size: 36px; color: var(--text); font-weight: 800; }
-.pricing article { display: grid; gap: 12px; background: white; }
+.pricing article {
+  display: grid;
+  gap: 14px;
+  background: white;
+  border-radius: 16px;
+  padding: 26px;
+  box-shadow: var(--shadow);
+}
+
+.plan-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.plan-head h2 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.plan-subtitle {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.price {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.plan-copy {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0;
+  display: grid;
+  gap: 10px;
+}
+
+.plan-features li {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.plan-paypal {
+  margin-top: 8px;
+}
+
+.plan-paypal .button {
+  width: 100%;
+}
+
+.pay-button {
+  min-height: 52px;
+  box-shadow: 0 16px 28px rgba(37, 99, 235, 0.18);
+}
+
+.pay-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 30px rgba(37, 99, 235, 0.24);
+}
+
+.pay-button:active {
+  transform: translateY(0);
+  box-shadow: 0 12px 20px rgba(37, 99, 235, 0.16);
+}
+
+.pay-status {
+  margin: 0;
+}
+
 .docs, .success { max-width: 760px; }
 pre { overflow: auto; padding: 18px; border-radius: 8px; background: #0f172a; color: #e5edf8; }
 
@@ -312,6 +431,26 @@ pre { overflow: auto; padding: 18px; border-radius: 8px; background: #0f172a; co
   .copy-button,
   .button {
     width: 100%;
+  }
+
+  .pricing-page {
+    padding-inline: 18px;
+  }
+
+  .pricing {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-head {
+    gap: 12px;
+  }
+
+  .plan-head h2 {
+    font-size: 24px;
+  }
+
+  .price {
+    font-size: 30px;
   }
 
   .paypal-button-container {
