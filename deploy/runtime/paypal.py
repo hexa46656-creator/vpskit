@@ -132,3 +132,22 @@ def create_paypal_checkout_order(plan: str) -> dict[str, str]:
     if not approval_url:
         raise HTTPException(status_code=502, detail="paypal_approval_url_missing")
     return {"checkout_url": str(approval_url), "order_id": str(payload.get("id", ""))}
+
+
+def capture_paypal_order(order_id: str) -> dict[str, Any]:
+    response = requests.post(
+        f"{settings.paypal_base_url}/v2/checkout/orders/{order_id}/capture",
+        headers={
+            "Authorization": f"Bearer {_get_access_token()}",
+            "Content-Type": "application/json",
+        },
+        timeout=15,
+    )
+    if response.status_code >= 400:
+        raise HTTPException(status_code=502, detail="paypal_capture_failed")
+
+    payload = response.json()
+    status = str(payload.get("status", "")).upper()
+    if status not in {"COMPLETED", "APPROVED"}:
+        raise HTTPException(status_code=502, detail="paypal_capture_incomplete")
+    return payload

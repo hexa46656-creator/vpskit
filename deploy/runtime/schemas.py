@@ -26,3 +26,11 @@ class CheckoutRequest(BaseModel):
     plan: str = Field(pattern="^(basic|pro|elite)$")
     email: str | None = Field(default=None, max_length=320)
     region: str | None = Field(default=None, max_length=32)
+
+
+class PayPalCreateOrderRequest(BaseModel):
+    plan: str = Field(default="basic", pattern="^(basic|pro|elite)$")
+
+
+class PayPalCaptureRequest(BaseModel):
+    order_id: str = Field(min_length=1, max_length=128)

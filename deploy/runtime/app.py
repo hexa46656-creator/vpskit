@@ -9,8 +9,15 @@ from fastapi.templating import Jinja2Templates
 
 from db import connect, init_db
 from config import settings
-from paypal import create_paypal_checkout_order, verify_paypal_webhook
-from schemas import CheckoutRequest, LoginRequest, MarkUsedRequest, PayPalWebhookEvent
+from paypal import capture_paypal_order, create_paypal_checkout_order, verify_paypal_webhook
+from schemas import (
+    CheckoutRequest,
+    LoginRequest,
+    MarkUsedRequest,
+    PayPalCaptureRequest,
+    PayPalCreateOrderRequest,
+    PayPalWebhookEvent,
+)
 from services import (
     authenticate_user,
     expire_old_subscriptions,
@@ -112,6 +119,25 @@ async def stripe_webhook(request: Request) -> dict:
 @app.post("/api/webhook/stripe")
 async def stripe_webhook_api(request: Request) -> dict:
     return await stripe_webhook(request)
+
+
+@app.get("/api/paypal/config")
+def paypal_config() -> dict[str, str]:
+    if not settings.paypal_client_id:
+        raise HTTPException(status_code=503, detail="missing_paypal_config:PAYPAL_CLIENT_ID")
+    return {"client_id": settings.paypal_client_id, "currency": "USD"}
+
+
+@app.post("/api/paypal/create-order")
+def paypal_create_order(payload: PayPalCreateOrderRequest) -> dict[str, str]:
+    checkout = create_paypal_checkout_order(payload.plan)
+    return {"order_id": checkout["order_id"], "status": "created"}
+
+
+@app.post("/api/paypal/capture-order")
+def paypal_capture_order(payload: PayPalCaptureRequest) -> dict[str, str]:
+    capture_paypal_order(payload.order_id)
+    return {"status": "captured", "order_id": payload.order_id, "redirect_url": "/success.html"}
 
 
 @app.post("/api/checkout/stripe")

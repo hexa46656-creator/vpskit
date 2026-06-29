@@ -169,6 +169,49 @@ def test_paypal_checkout_returns_approval_url(tmp_path, monkeypatch):
     assert captured["json"]["purchase_units"][0]["custom_id"] == "plan=basic"
 
 
+def test_paypal_button_endpoints_support_config_create_and_capture(tmp_path, monkeypatch):
+    app_module = load_app(tmp_path)
+    paypal = importlib.import_module("paypal")
+    captured: dict = {}
+
+    class CreateResponse:
+        status_code = 201
+
+        def json(self):
+            return {
+                "id": "ORDER-456",
+                "links": [{"rel": "approve", "href": "https://www.paypal.com/checkoutnow?token=ORDER-456"}],
+            }
+
+    class CaptureResponse:
+        status_code = 201
+
+        def json(self):
+            return {"status": "COMPLETED", "id": "CAPTURE-456"}
+
+    def fake_post(url, auth=None, data=None, headers=None, json=None, timeout=None):
+        captured["url"] = url
+        captured["json"] = json
+        if url.endswith("/capture"):
+            return CaptureResponse()
+        return CreateResponse()
+
+    monkeypatch.setattr(paypal.requests, "post", fake_post)
+    client = TestClient(app_module.app)
+    with client:
+        config = client.get("/api/paypal/config")
+        create = client.post("/api/paypal/create-order", json={"plan": "basic"})
+        capture = client.post("/api/paypal/capture-order", json={"order_id": "ORDER-456"})
+
+    assert config.status_code == 200
+    assert config.json()["client_id"] == "paypal-client"
+    assert create.status_code == 200
+    assert create.json()["order_id"] == "ORDER-456"
+    assert capture.status_code == 200
+    assert capture.json()["redirect_url"] == "/success.html"
+    assert captured["url"].endswith("/v2/checkout/orders/ORDER-456/capture")
+
+
 def test_dashboard_and_static_site_files_exist(tmp_path):
     app_module = load_app(tmp_path)
     app_module.init_db()
@@ -196,3 +239,9 @@ def test_dashboard_and_static_site_files_exist(tmp_path):
     for file_name in ("index.html", "pricing.html", "docs.html", "success.html"):
         text = (site_root / file_name).read_text()
         assert "https://alexhexa.com/api/" in text
+
+    index_text = (site_root / "index.html").read_text()
+    assert "VPSKit" in index_text
+    assert "Deploy your private VPN infrastructure in 60 seconds." in index_text
+    assert "Get Access" in index_text
+    assert "Tap PayPal button to complete checkout" in index_text
